@@ -1,0 +1,9 @@
+.github/**
+node_modules/**
+scripts/**
+tests/**
+samples/**
+images/showcase-*.png
+images/*.svg
+.gitignore
+*.vsix

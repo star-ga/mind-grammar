@@ -1,0 +1,45 @@
+// showcase.mind: a small program that exercises most of the MIND surface
+// highlighted by this grammar.
+
+/// A fixed-size record with narrow integer fields.
+struct Packet {
+    tag: u8,
+    len: u16,
+    bytes: [u8; 4],
+}
+
+enum Mode {
+    Fast,
+    Exact,
+}
+
+const SCALE: i64 = 120_000;
+
+/// Sum the payload bytes of a packet.
+pub fn checksum(p: Packet) -> i64 {
+    let mut sum: i64 = 0;
+    let mut i: i64 = 0;
+    while i < 4 {
+        sum += p.bytes[i] as i64;
+        i = i + 1;
+    }
+    sum ^ 0xFF
+}
+
+fn weight(m: Mode) -> i64 {
+    match m {
+        Mode::Fast => 1,
+        Mode::Exact => 2,
+    }
+}
+
+#[test]
+fn checksum_matches() -> bool {
+    let p: Packet = Packet { tag: 7u8, len: 4u16, bytes: [1, 2, 3, 4] };
+    let w: i64 = if p.tag == 7u8 { weight(Mode::Exact) } else { 0 };
+    let mut acc: i64 = 0;
+    for k in 0..3 {
+        acc = acc + (k << 1);
+    }
+    checksum(p) * w + acc + SCALE / 1e3 as i64 == 616
+}

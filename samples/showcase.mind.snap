@@ -1,0 +1,383 @@
+>// showcase.mind: a small program that exercises most of the MIND surface
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// highlighted by this grammar.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>/// A fixed-size record with narrow integer fields.
+#^^^ source.mind comment.line.documentation.mind punctuation.definition.comment.mind
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.documentation.mind
+>struct Packet {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    tag: u8,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^ source.mind storage.type.primitive.mind
+#           ^ source.mind punctuation.separator.comma.mind
+>    len: u16,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind storage.type.primitive.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>    bytes: [u8; 4],
+#^^^^^^^^^ source.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.square.mind
+#            ^^ source.mind storage.type.primitive.mind
+#              ^ source.mind punctuation.terminator.statement.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.brackets.square.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum Mode {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^ source.mind entity.name.type.mind
+#         ^ source.mind
+#          ^ source.mind punctuation.brackets.curly.mind
+>    Fast,
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.type.mind
+#        ^ source.mind punctuation.separator.comma.mind
+>    Exact,
+#^^^^ source.mind
+#    ^^^^^ source.mind entity.name.type.mind
+#         ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>const SCALE: i64 = 120_000;
+#^^^^^ source.mind storage.type.const.mind
+#     ^ source.mind
+#      ^^^^^ source.mind variable.other.constant.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^ source.mind storage.type.primitive.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^ source.mind
+#                   ^^^^^^^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.terminator.statement.mind
+>
+>/// Sum the payload bytes of a packet.
+#^^^ source.mind comment.line.documentation.mind punctuation.definition.comment.mind
+#   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.documentation.mind
+>pub fn checksum(p: Packet) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    let mut sum: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.terminator.statement.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i < 4 {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^ source.mind
+#              ^ source.mind constant.numeric.integer.decimal.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.brackets.curly.mind
+>        sum += p.bytes[i] as i64;
+#^^^^^^^^^^^^ source.mind
+#            ^^ source.mind keyword.operator.assignment.compound.mind
+#              ^^ source.mind
+#                ^ source.mind punctuation.accessor.mind
+#                 ^^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.square.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.brackets.square.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.other.as.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    sum ^ 0xFF
+#^^^^^^^^ source.mind
+#        ^ source.mind keyword.operator.bitwise.mind
+#         ^ source.mind
+#          ^^^^ source.mind constant.numeric.integer.hexadecimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn weight(m: Mode) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^ source.mind entity.name.function.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^^ source.mind entity.name.type.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^^ source.mind keyword.operator.arrow.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.brackets.curly.mind
+>    match m {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+>        Mode::Fast => 1,
+#^^^^^^^^ source.mind
+#        ^^^^ source.mind entity.name.type.mind
+#            ^^ source.mind punctuation.separator.namespace.mind
+#              ^^^^ source.mind entity.name.type.mind
+#                  ^ source.mind
+#                   ^^ source.mind keyword.operator.arrow.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+#                       ^ source.mind punctuation.separator.comma.mind
+>        Mode::Exact => 2,
+#^^^^^^^^ source.mind
+#        ^^^^ source.mind entity.name.type.mind
+#            ^^ source.mind punctuation.separator.namespace.mind
+#              ^^^^^ source.mind entity.name.type.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.arrow.mind
+#                      ^ source.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>#[test]
+#^ source.mind meta.attribute.mind punctuation.definition.attribute.mind
+# ^ source.mind meta.attribute.mind punctuation.brackets.attribute.begin.mind
+#  ^^^^ source.mind meta.attribute.mind entity.other.attribute-name.mind
+#      ^ source.mind meta.attribute.mind punctuation.brackets.attribute.end.mind
+>fn checksum_matches() -> bool {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^^ source.mind keyword.operator.arrow.mind
+#                        ^ source.mind
+#                         ^^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.curly.mind
+>    let p: Packet = Packet { tag: 7u8, len: 4u16, bytes: [1, 2, 3, 4] };
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^^^^ source.mind entity.name.type.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^ source.mind
+#                    ^^^^^^ source.mind entity.name.type.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+#                            ^^^^ source.mind
+#                                ^ source.mind punctuation.separator.colon.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^^ source.mind constant.numeric.integer.decimal.mind storage.type.numeric.mind
+#                                     ^ source.mind punctuation.separator.comma.mind
+#                                      ^^^^ source.mind
+#                                          ^ source.mind punctuation.separator.colon.mind
+#                                           ^ source.mind
+#                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                             ^^^ source.mind constant.numeric.integer.decimal.mind storage.type.numeric.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^^ source.mind
+#                                                       ^ source.mind punctuation.separator.colon.mind
+#                                                        ^ source.mind
+#                                                         ^ source.mind punctuation.brackets.square.mind
+#                                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                                           ^ source.mind punctuation.separator.comma.mind
+#                                                            ^ source.mind
+#                                                             ^ source.mind constant.numeric.integer.decimal.mind
+#                                                              ^ source.mind punctuation.separator.comma.mind
+#                                                               ^ source.mind
+#                                                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                                  ^ source.mind
+#                                                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                     ^ source.mind
+#                                                                      ^ source.mind punctuation.brackets.curly.mind
+#                                                                       ^ source.mind punctuation.terminator.statement.mind
+>    let w: i64 = if p.tag == 7u8 { weight(Mode::Exact) } else { 0 };
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^ source.mind keyword.control.mind
+#                   ^^ source.mind
+#                     ^ source.mind punctuation.accessor.mind
+#                      ^^^^ source.mind
+#                          ^^ source.mind keyword.operator.comparison.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^^ source.mind constant.numeric.integer.decimal.mind storage.type.numeric.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+#                                  ^ source.mind
+#                                   ^^^^^^ source.mind entity.name.function.call.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^^^^ source.mind entity.name.type.mind
+#                                              ^^ source.mind punctuation.separator.namespace.mind
+#                                                ^^^^^ source.mind entity.name.type.mind
+#                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                      ^ source.mind
+#                                                       ^ source.mind punctuation.brackets.curly.mind
+#                                                        ^ source.mind
+#                                                         ^^^^ source.mind keyword.control.mind
+#                                                             ^ source.mind
+#                                                              ^ source.mind punctuation.brackets.curly.mind
+#                                                               ^ source.mind
+#                                                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                 ^ source.mind
+#                                                                  ^ source.mind punctuation.brackets.curly.mind
+#                                                                   ^ source.mind punctuation.terminator.statement.mind
+>    let mut acc: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.terminator.statement.mind
+>    for k in 0..3 {
+#^^^^ source.mind
+#    ^^^ source.mind keyword.control.mind
+#       ^^^ source.mind
+#          ^^ source.mind keyword.control.mind
+#            ^ source.mind
+#             ^ source.mind constant.numeric.integer.decimal.mind
+#              ^^ source.mind keyword.operator.range.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>        acc = acc + (k << 1);
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^^ source.mind keyword.operator.bitwise.shift.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    checksum(p) * w + acc + SCALE / 1e3 as i64 == 616
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.function.call.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.arithmetic.mind
+#                 ^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind keyword.operator.arithmetic.mind
+#                           ^ source.mind
+#                            ^^^^^ source.mind variable.other.constant.mind
+#                                 ^ source.mind
+#                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                   ^ source.mind
+#                                    ^^^ source.mind constant.numeric.float.mind
+#                                       ^ source.mind
+#                                        ^^ source.mind keyword.other.as.mind
+#                                          ^ source.mind
+#                                           ^^^ source.mind storage.type.primitive.mind
+#                                              ^ source.mind
+#                                               ^^ source.mind keyword.operator.comparison.mind
+#                                                 ^ source.mind
+#                                                  ^^^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>

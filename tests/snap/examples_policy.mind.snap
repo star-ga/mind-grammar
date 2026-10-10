@@ -1,0 +1,1653 @@
+>// policy.mind — v0.1 Execution Boundary Kernel
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Pure Mind Lang
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Deterministic, zero-alloc, fail-closed
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Single compiled function. No negotiation at the boundary.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>enum Action {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^^^ source.mind entity.name.type.mind
+#           ^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+>    Read,
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.type.mind
+#        ^ source.mind punctuation.separator.comma.mind
+>    Write,
+#^^^^ source.mind
+#    ^^^^^ source.mind entity.name.type.mind
+#         ^ source.mind punctuation.separator.comma.mind
+>    Delete,
+#^^^^ source.mind
+#    ^^^^^^ source.mind entity.name.type.mind
+#          ^ source.mind punctuation.separator.comma.mind
+>    Execute,
+#^^^^ source.mind
+#    ^^^^^^^ source.mind entity.name.type.mind
+#           ^ source.mind punctuation.separator.comma.mind
+>    TransferAsset,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                 ^ source.mind punctuation.separator.comma.mind
+>    ChangePermissions,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.separator.comma.mind
+>    SendMessage,
+#^^^^ source.mind
+#    ^^^^^^^^^^^ source.mind entity.name.type.mind
+#               ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum Resource {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    Repo,
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.type.mind
+#        ^ source.mind punctuation.separator.comma.mind
+>    Database,
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.type.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>    Filesystem,
+#^^^^ source.mind
+#    ^^^^^^^^^^ source.mind entity.name.type.mind
+#              ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum Env {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^ source.mind entity.name.type.mind
+#        ^ source.mind
+#         ^ source.mind punctuation.brackets.curly.mind
+>    Prod,
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.type.mind
+#        ^ source.mind punctuation.separator.comma.mind
+>    Staging,
+#^^^^ source.mind
+#    ^^^^^^^ source.mind entity.name.type.mind
+#           ^ source.mind punctuation.separator.comma.mind
+>    Dev,
+#^^^^ source.mind
+#    ^^^ source.mind entity.name.type.mind
+#       ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum EffectTag {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^^^^^^ source.mind entity.name.type.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>    Allow,
+#^^^^ source.mind
+#    ^^^^^ source.mind entity.name.type.mind
+#         ^ source.mind punctuation.separator.comma.mind
+>    Deny,
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.type.mind
+#        ^ source.mind punctuation.separator.comma.mind
+>    RequireConfirmation,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                       ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum DenyCode {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    InvalidInput,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                ^ source.mind punctuation.separator.comma.mind
+>    SuspiciousJustification,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+>    SensitivePath,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                 ^ source.mind punctuation.separator.comma.mind
+>    InfraModification,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.separator.comma.mind
+>    IncompatibleAction,
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+>    DefaultDeny,
+#^^^^ source.mind
+#    ^^^^^^^^^^^ source.mind entity.name.type.mind
+#               ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>enum ConfirmCode {
+#^^^^ source.mind storage.type.enum.mind
+#    ^ source.mind
+#     ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.brackets.curly.mind
+>    HumanUI,
+#^^^^ source.mind
+#    ^^^^^^^ source.mind entity.name.type.mind
+#           ^ source.mind punctuation.separator.comma.mind
+>    HumanSigned,
+#^^^^ source.mind
+#    ^^^^^^^^^^^ source.mind entity.name.type.mind
+#               ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>const TIMEOUT_SHIFT: u32 = 8
+#^^^^^ source.mind storage.type.const.mind
+#     ^ source.mind
+#      ^^^^^^^^^^^^^ source.mind variable.other.constant.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind
+#                         ^ source.mind keyword.operator.assignment.mind
+#                          ^ source.mind
+#                           ^ source.mind constant.numeric.integer.decimal.mind
+>
+>struct Effect {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    tag: EffectTag,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^^^^^^^ source.mind entity.name.type.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+>    code: u32,
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.separator.colon.mind
+#         ^ source.mind
+#          ^^^ source.mind storage.type.primitive.mind
+#             ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>// DenyCode OR packed confirmation
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>struct Target {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    path: &[u8],
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.separator.colon.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.bitwise.mind
+#           ^ source.mind punctuation.brackets.square.mind
+#            ^^ source.mind storage.type.primitive.mind
+#              ^ source.mind punctuation.brackets.square.mind
+#               ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>struct Request {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.type.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>    env: Env,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind entity.name.type.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>    action: Action,
+#^^^^^^^^^^ source.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.type.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+>    resource: Resource,
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.separator.colon.mind
+#             ^ source.mind
+#              ^^^^^^^^ source.mind entity.name.type.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+>    target: Target,
+#^^^^^^^^^^ source.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.type.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+>    justification: &[u8],
+#^^^^^^^^^^^^^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.bitwise.mind
+#                    ^ source.mind punctuation.brackets.square.mind
+#                     ^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.square.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------- Helpers ----------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn starts_with(slice: &[u8], prefix: &[u8]) -> bool {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^^^^^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.bitwise.mind
+#                       ^ source.mind punctuation.brackets.square.mind
+#                        ^^ source.mind storage.type.primitive.mind
+#                          ^ source.mind punctuation.brackets.square.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^ source.mind keyword.operator.bitwise.mind
+#                                      ^ source.mind punctuation.brackets.square.mind
+#                                       ^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.brackets.square.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind
+#                                            ^^ source.mind keyword.operator.arrow.mind
+#                                              ^ source.mind
+#                                               ^^^^ source.mind storage.type.primitive.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind punctuation.brackets.curly.mind
+>    if prefix.len() > slice.len() {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.comparison.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.accessor.mind
+#                            ^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut i = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    while i < prefix.len() {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^^^^^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+>        if slice[i] != prefix[i] {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^^^^ source.mind
+#                ^ source.mind punctuation.brackets.square.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.brackets.square.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.comparison.mind
+#                      ^^^^^^^ source.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^ source.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>            return 0;
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    1
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn contains_ascii_ci(slice: &[u8], needle: &[u8]) -> bool {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^ source.mind keyword.operator.bitwise.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.brackets.square.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^^^ source.mind
+#                                         ^ source.mind punctuation.separator.colon.mind
+#                                          ^ source.mind
+#                                           ^ source.mind keyword.operator.bitwise.mind
+#                                            ^ source.mind punctuation.brackets.square.mind
+#                                             ^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.brackets.square.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind keyword.operator.arrow.mind
+#                                                    ^ source.mind
+#                                                     ^^^^ source.mind storage.type.primitive.mind
+#                                                         ^ source.mind
+#                                                          ^ source.mind punctuation.brackets.curly.mind
+>    if needle.len() == 0 || needle.len() > slice.len() {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.comparison.mind
+#                      ^ source.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind
+#                         ^^ source.mind keyword.operator.logical.mind
+#                           ^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.accessor.mind
+#                                   ^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind
+#                                         ^ source.mind keyword.operator.comparison.mind
+#                                          ^^^^^^ source.mind
+#                                                ^ source.mind punctuation.accessor.mind
+#                                                 ^^^ source.mind entity.name.function.call.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                      ^ source.mind
+#                                                       ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let n = needle.len();
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^^^^^ source.mind
+#                  ^ source.mind punctuation.accessor.mind
+#                   ^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind punctuation.terminator.statement.mind
+>    let mut i = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    while i + n <= slice.len() {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.arithmetic.mind
+#             ^^^ source.mind
+#                ^^ source.mind keyword.operator.comparison.mind
+#                  ^^^^^^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^ source.mind entity.name.function.call.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^ source.mind punctuation.brackets.curly.mind
+>        let mut j = 0;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+#                     ^ source.mind punctuation.terminator.statement.mind
+>        while j < n {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^ source.mind
+#                ^ source.mind keyword.operator.comparison.mind
+#                 ^^^ source.mind
+#                    ^ source.mind punctuation.brackets.curly.mind
+>            let a = slice[i + j];
+#^^^^^^^^^^^^ source.mind
+#            ^^^ source.mind storage.type.let.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^^^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.square.mind
+#                          ^^ source.mind
+#                            ^ source.mind keyword.operator.arithmetic.mind
+#                             ^^ source.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>            let b = needle[j];
+#^^^^^^^^^^^^ source.mind
+#            ^^^ source.mind storage.type.let.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^^^^^^^ source.mind
+#                          ^ source.mind punctuation.brackets.square.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^ source.mind punctuation.terminator.statement.mind
+>            let al = if a >= 65 && a <= 90 {
+#^^^^^^^^^^^^ source.mind
+#            ^^^ source.mind storage.type.let.mind
+#               ^ source.mind
+#                ^^ source.mind variable.other.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^ source.mind keyword.control.mind
+#                       ^^^ source.mind
+#                          ^^ source.mind keyword.operator.comparison.mind
+#                            ^ source.mind
+#                             ^^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind
+#                                ^^ source.mind keyword.operator.logical.mind
+#                                  ^^^ source.mind
+#                                     ^^ source.mind keyword.operator.comparison.mind
+#                                       ^ source.mind
+#                                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>                a + 32
+#^^^^^^^^^^^^^^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^^ source.mind constant.numeric.integer.decimal.mind
+>            } else {
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+#             ^ source.mind
+#              ^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.curly.mind
+>                a
+#^^^^^^^^^^^^^^^^^^ source.mind
+>            };
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+#             ^ source.mind punctuation.terminator.statement.mind
+>            let bl = if b >= 65 && b <= 90 {
+#^^^^^^^^^^^^ source.mind
+#            ^^^ source.mind storage.type.let.mind
+#               ^ source.mind
+#                ^^ source.mind variable.other.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^ source.mind keyword.control.mind
+#                       ^^^ source.mind
+#                          ^^ source.mind keyword.operator.comparison.mind
+#                            ^ source.mind
+#                             ^^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind
+#                                ^^ source.mind keyword.operator.logical.mind
+#                                  ^^^ source.mind
+#                                     ^^ source.mind keyword.operator.comparison.mind
+#                                       ^ source.mind
+#                                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>                b + 32
+#^^^^^^^^^^^^^^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^^ source.mind constant.numeric.integer.decimal.mind
+>            } else {
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+#             ^ source.mind
+#              ^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.curly.mind
+>                b
+#^^^^^^^^^^^^^^^^^^ source.mind
+>            };
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+#             ^ source.mind punctuation.terminator.statement.mind
+>            if al != bl {
+#^^^^^^^^^^^^ source.mind
+#            ^^ source.mind keyword.control.mind
+#              ^^^^ source.mind
+#                  ^^ source.mind keyword.operator.comparison.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>                break
+#^^^^^^^^^^^^^^^^ source.mind
+#                ^^^^^ source.mind keyword.control.mind
+>            }
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+>            j = j + 1;
+#^^^^^^^^^^^^^^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+#                     ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        if j == n {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^ source.mind
+#             ^^ source.mind keyword.operator.comparison.mind
+#               ^^^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>            return 1;
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    0
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn validate(req: &Request) -> bool {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^ source.mind entity.name.function.mind
+#           ^ source.mind punctuation.brackets.round.mind
+#            ^^^ source.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.bitwise.mind
+#                  ^^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind
+#                                   ^ source.mind punctuation.brackets.curly.mind
+>    if req.justification.len() < 12 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^^^^^^^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^ source.mind entity.name.function.call.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^ source.mind keyword.operator.comparison.mind
+#                                ^ source.mind
+#                                 ^^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    if contains_ascii_ci(req.justification, "ignore previous") || contains_ascii_ci(req.justification, "bypass") || contains_ascii_ci(req.justification, "no logs") || contains_ascii_ci(req.justification, "silent") || contains_ascii_ci(req.justification, "don't tell") {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^ source.mind
+#                            ^ source.mind punctuation.accessor.mind
+#                             ^^^^^^^^^^^^^ source.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^ source.mind
+#                                            ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                             ^^^^^^^^^^^^^^^ source.mind string.quoted.double.mind
+#                                                            ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                              ^ source.mind
+#                                                               ^^ source.mind keyword.operator.logical.mind
+#                                                                 ^ source.mind
+#                                                                  ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                   ^ source.mind punctuation.brackets.round.mind
+#                                                                                    ^^^ source.mind
+#                                                                                       ^ source.mind punctuation.accessor.mind
+#                                                                                        ^^^^^^^^^^^^^ source.mind
+#                                                                                                     ^ source.mind punctuation.separator.comma.mind
+#                                                                                                      ^ source.mind
+#                                                                                                       ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                                        ^^^^^^ source.mind string.quoted.double.mind
+#                                                                                                              ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                ^ source.mind
+#                                                                                                                 ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                   ^ source.mind
+#                                                                                                                    ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                      ^^^ source.mind
+#                                                                                                                                         ^ source.mind punctuation.accessor.mind
+#                                                                                                                                          ^^^^^^^^^^^^^ source.mind
+#                                                                                                                                                       ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                        ^ source.mind
+#                                                                                                                                                         ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                                                                                          ^^^^^^^ source.mind string.quoted.double.mind
+#                                                                                                                                                                 ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                                                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                   ^ source.mind
+#                                                                                                                                                                    ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                                                                      ^ source.mind
+#                                                                                                                                                                       ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                                                                                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                         ^^^ source.mind
+#                                                                                                                                                                                            ^ source.mind punctuation.accessor.mind
+#                                                                                                                                                                                             ^^^^^^^^^^^^^ source.mind
+#                                                                                                                                                                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                                                                           ^ source.mind
+#                                                                                                                                                                                                            ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                                                                                                                                             ^^^^^^ source.mind string.quoted.double.mind
+#                                                                                                                                                                                                                   ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                                                                                                                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                                                     ^ source.mind
+#                                                                                                                                                                                                                      ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                                                                                                                        ^ source.mind
+#                                                                                                                                                                                                                         ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                                                                                                                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                                                                           ^^^ source.mind
+#                                                                                                                                                                                                                                              ^ source.mind punctuation.accessor.mind
+#                                                                                                                                                                                                                                               ^^^^^^^^^^^^^ source.mind
+#                                                                                                                                                                                                                                                            ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                                                                                                                             ^ source.mind
+#                                                                                                                                                                                                                                                              ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                                                                                                                                                                                               ^^^^^^^^^^ source.mind string.quoted.double.mind
+#                                                                                                                                                                                                                                                                         ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                                                                                                                                                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                                                                                                           ^ source.mind
+#                                                                                                                                                                                                                                                                            ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    1
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn pack_confirm(code: ConfirmCode, timeout: u32) -> u32 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^^^^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^^^^ source.mind
+#                                          ^ source.mind punctuation.separator.colon.mind
+#                                           ^ source.mind
+#                                            ^^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+#                                                ^ source.mind
+#                                                 ^^ source.mind keyword.operator.arrow.mind
+#                                                   ^ source.mind
+#                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                       ^ source.mind
+#                                                        ^ source.mind punctuation.brackets.curly.mind
+>    (code as u32) | (timeout << TIMEOUT_SHIFT)
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.round.mind
+#     ^^^^^ source.mind
+#          ^^ source.mind keyword.other.as.mind
+#            ^ source.mind
+#             ^^^ source.mind storage.type.primitive.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.bitwise.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^^^ source.mind
+#                             ^^ source.mind keyword.operator.bitwise.shift.mind
+#                               ^ source.mind
+#                                ^^^^^^^^^^^^^ source.mind variable.other.constant.mind
+#                                             ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------- Execution Boundary ----------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn evaluate(req: &Request) -> Effect {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^ source.mind entity.name.function.mind
+#           ^ source.mind punctuation.brackets.round.mind
+#            ^^^ source.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.bitwise.mind
+#                  ^^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^^^^ source.mind entity.name.type.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 1. Hard normalization
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if !validate(req) {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^ source.mind
+#       ^ source.mind keyword.operator.logical.mind
+#        ^^^^^^^^ source.mind entity.name.function.call.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^ source.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::Deny, code: DenyCode::SuspiciousJustification as u32 };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^ source.mind entity.name.type.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^ source.mind
+#                                                    ^^^^^^^^ source.mind entity.name.type.mind
+#                                                            ^^ source.mind punctuation.separator.namespace.mind
+#                                                              ^^^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                     ^ source.mind
+#                                                                                      ^^ source.mind keyword.other.as.mind
+#                                                                                        ^ source.mind
+#                                                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                                                            ^ source.mind
+#                                                                                             ^ source.mind punctuation.brackets.curly.mind
+#                                                                                              ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 2. Exhaustive env validation (guards deserialization corruption)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if req.env != Env::Prod && req.env != Env::Staging && req.env != Env::Dev {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^ source.mind
+#               ^^ source.mind keyword.operator.comparison.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^^ source.mind punctuation.separator.namespace.mind
+#                       ^^^^ source.mind entity.name.type.mind
+#                           ^ source.mind
+#                            ^^ source.mind keyword.operator.logical.mind
+#                              ^^^^ source.mind
+#                                  ^ source.mind punctuation.accessor.mind
+#                                   ^^^^ source.mind
+#                                       ^^ source.mind keyword.operator.comparison.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind entity.name.type.mind
+#                                             ^^ source.mind punctuation.separator.namespace.mind
+#                                               ^^^^^^^ source.mind entity.name.type.mind
+#                                                      ^ source.mind
+#                                                       ^^ source.mind keyword.operator.logical.mind
+#                                                         ^^^^ source.mind
+#                                                             ^ source.mind punctuation.accessor.mind
+#                                                              ^^^^ source.mind
+#                                                                  ^^ source.mind keyword.operator.comparison.mind
+#                                                                    ^ source.mind
+#                                                                     ^^^ source.mind entity.name.type.mind
+#                                                                        ^^ source.mind punctuation.separator.namespace.mind
+#                                                                          ^^^ source.mind entity.name.type.mind
+#                                                                             ^ source.mind
+#                                                                              ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::Deny, code: DenyCode::InvalidInput as u32 };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^ source.mind entity.name.type.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^ source.mind
+#                                                    ^^^^^^^^ source.mind entity.name.type.mind
+#                                                            ^^ source.mind punctuation.separator.namespace.mind
+#                                                              ^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                          ^ source.mind
+#                                                                           ^^ source.mind keyword.other.as.mind
+#                                                                             ^ source.mind
+#                                                                              ^^^ source.mind storage.type.primitive.mind
+#                                                                                 ^ source.mind
+#                                                                                  ^ source.mind punctuation.brackets.curly.mind
+#                                                                                   ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 3. Action ↔ Resource compatibility
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if (req.action == Action::TransferAsset && req.resource != Resource::Database) || (req.action == Action::Execute && req.resource != Resource::Database) || (req.action == Action::ChangePermissions && req.resource == Resource::Filesystem) {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^ source.mind
+#       ^ source.mind punctuation.brackets.round.mind
+#        ^^^ source.mind
+#           ^ source.mind punctuation.accessor.mind
+#            ^^^^^^^ source.mind
+#                   ^^ source.mind keyword.operator.comparison.mind
+#                     ^ source.mind
+#                      ^^^^^^ source.mind entity.name.type.mind
+#                            ^^ source.mind punctuation.separator.namespace.mind
+#                              ^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                           ^ source.mind
+#                                            ^^ source.mind keyword.operator.logical.mind
+#                                              ^^^^ source.mind
+#                                                  ^ source.mind punctuation.accessor.mind
+#                                                   ^^^^^^^^^ source.mind
+#                                                            ^^ source.mind keyword.operator.comparison.mind
+#                                                              ^ source.mind
+#                                                               ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                       ^^ source.mind punctuation.separator.namespace.mind
+#                                                                         ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                 ^ source.mind punctuation.brackets.round.mind
+#                                                                                  ^ source.mind
+#                                                                                   ^^ source.mind keyword.operator.logical.mind
+#                                                                                     ^ source.mind
+#                                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                                       ^^^ source.mind
+#                                                                                          ^ source.mind punctuation.accessor.mind
+#                                                                                           ^^^^^^^ source.mind
+#                                                                                                  ^^ source.mind keyword.operator.comparison.mind
+#                                                                                                    ^ source.mind
+#                                                                                                     ^^^^^^ source.mind entity.name.type.mind
+#                                                                                                           ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                                             ^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                    ^ source.mind
+#                                                                                                                     ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                       ^^^^ source.mind
+#                                                                                                                           ^ source.mind punctuation.accessor.mind
+#                                                                                                                            ^^^^^^^^^ source.mind
+#                                                                                                                                     ^^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                       ^ source.mind
+#                                                                                                                                        ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                                                                                  ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                           ^ source.mind
+#                                                                                                                                                            ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                                                              ^ source.mind
+#                                                                                                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                ^^^ source.mind
+#                                                                                                                                                                   ^ source.mind punctuation.accessor.mind
+#                                                                                                                                                                    ^^^^^^^ source.mind
+#                                                                                                                                                                           ^^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                                             ^ source.mind
+#                                                                                                                                                                              ^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                                                    ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                                                                                                                      ^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                                                                       ^ source.mind
+#                                                                                                                                                                                                        ^^ source.mind keyword.operator.logical.mind
+#                                                                                                                                                                                                          ^^^^ source.mind
+#                                                                                                                                                                                                              ^ source.mind punctuation.accessor.mind
+#                                                                                                                                                                                                               ^^^^^^^^^ source.mind
+#                                                                                                                                                                                                                        ^^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                                                                                          ^ source.mind
+#                                                                                                                                                                                                                           ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                                                                                                   ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                                                                                                                                                                     ^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                                                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                                                                                ^ source.mind
+#                                                                                                                                                                                                                                                 ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::Deny, code: DenyCode::IncompatibleAction as u32 };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^ source.mind entity.name.type.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^ source.mind
+#                                                    ^^^^^^^^ source.mind entity.name.type.mind
+#                                                            ^^ source.mind punctuation.separator.namespace.mind
+#                                                              ^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                ^ source.mind
+#                                                                                 ^^ source.mind keyword.other.as.mind
+#                                                                                   ^ source.mind
+#                                                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                                                       ^ source.mind
+#                                                                                        ^ source.mind punctuation.brackets.curly.mind
+#                                                                                         ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 4. Read-only fast path
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if req.action == Action::Read {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^ source.mind
+#                  ^^ source.mind keyword.operator.comparison.mind
+#                    ^ source.mind
+#                     ^^^^^^ source.mind entity.name.type.mind
+#                           ^^ source.mind punctuation.separator.namespace.mind
+#                             ^^^^ source.mind entity.name.type.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::Allow, code: 0 };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^^ source.mind entity.name.type.mind
+#                                             ^ source.mind punctuation.separator.comma.mind
+#                                              ^^^^^ source.mind
+#                                                   ^ source.mind punctuation.separator.colon.mind
+#                                                    ^ source.mind
+#                                                     ^ source.mind constant.numeric.integer.decimal.mind
+#                                                      ^ source.mind
+#                                                       ^ source.mind punctuation.brackets.curly.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 5. Filesystem sensitive paths
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if req.resource == Resource::Filesystem {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^^^ source.mind
+#                    ^^ source.mind keyword.operator.comparison.mind
+#                      ^ source.mind
+#                       ^^^^^^^^ source.mind entity.name.type.mind
+#                               ^^ source.mind punctuation.separator.namespace.mind
+#                                 ^^^^^^^^^^ source.mind entity.name.type.mind
+#                                           ^ source.mind
+#                                            ^ source.mind punctuation.brackets.curly.mind
+>        let p = req.target.path;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^^^^ source.mind
+#                   ^ source.mind punctuation.accessor.mind
+#                    ^^^^^^ source.mind
+#                          ^ source.mind punctuation.accessor.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>        if starts_with(p, "/secrets/") || starts_with(p, "/etc/") || contains_ascii_ci(p, "/.ssh/") {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^ source.mind
+#                          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                           ^^^^^^^^^ source.mind string.quoted.double.mind
+#                                    ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind
+#                                       ^^ source.mind keyword.operator.logical.mind
+#                                         ^ source.mind
+#                                          ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                      ^ source.mind
+#                                                       ^ source.mind punctuation.separator.comma.mind
+#                                                        ^ source.mind
+#                                                         ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                          ^^^^^ source.mind string.quoted.double.mind
+#                                                               ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                ^ source.mind punctuation.brackets.round.mind
+#                                                                 ^ source.mind
+#                                                                  ^^ source.mind keyword.operator.logical.mind
+#                                                                    ^ source.mind
+#                                                                     ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                                       ^ source.mind
+#                                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                                         ^ source.mind
+#                                                                                          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                           ^^^^^^ source.mind string.quoted.double.mind
+#                                                                                                 ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                                                   ^ source.mind
+#                                                                                                    ^ source.mind punctuation.brackets.curly.mind
+>            return Effect { tag: EffectTag::Deny, code: DenyCode::SensitivePath as u32 };
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.brackets.curly.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.colon.mind
+#                                ^ source.mind
+#                                 ^^^^^^^^^ source.mind entity.name.type.mind
+#                                          ^^ source.mind punctuation.separator.namespace.mind
+#                                            ^^^^ source.mind entity.name.type.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^ source.mind
+#                                                      ^ source.mind punctuation.separator.colon.mind
+#                                                       ^ source.mind
+#                                                        ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                ^^ source.mind punctuation.separator.namespace.mind
+#                                                                  ^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                               ^ source.mind
+#                                                                                ^^ source.mind keyword.other.as.mind
+#                                                                                  ^ source.mind
+#                                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                                      ^ source.mind
+#                                                                                       ^ source.mind punctuation.brackets.curly.mind
+#                                                                                        ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 6. High-risk confirmations
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if req.env == Env::Prod && req.action == Action::ChangePermissions {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^ source.mind
+#               ^^ source.mind keyword.operator.comparison.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^^ source.mind punctuation.separator.namespace.mind
+#                       ^^^^ source.mind entity.name.type.mind
+#                           ^ source.mind
+#                            ^^ source.mind keyword.operator.logical.mind
+#                              ^^^^ source.mind
+#                                  ^ source.mind punctuation.accessor.mind
+#                                   ^^^^^^^ source.mind
+#                                          ^^ source.mind keyword.operator.comparison.mind
+#                                            ^ source.mind
+#                                             ^^^^^^ source.mind entity.name.type.mind
+#                                                   ^^ source.mind punctuation.separator.namespace.mind
+#                                                     ^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                      ^ source.mind
+#                                                                       ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::RequireConfirmation, code: pack_confirm(ConfirmCode::HumanSigned, 900) };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                           ^ source.mind punctuation.separator.comma.mind
+#                                                            ^^^^^ source.mind
+#                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                           ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                             ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                                                         ^ source.mind
+#                                                                                                          ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                                                                              ^ source.mind
+#                                                                                                               ^ source.mind punctuation.brackets.curly.mind
+#                                                                                                                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    if req.action == Action::Delete {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^ source.mind
+#                  ^^ source.mind keyword.operator.comparison.mind
+#                    ^ source.mind
+#                     ^^^^^^ source.mind entity.name.type.mind
+#                           ^^ source.mind punctuation.separator.namespace.mind
+#                             ^^^^^^ source.mind entity.name.type.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::RequireConfirmation, code: pack_confirm(ConfirmCode::HumanUI, 600) };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                           ^ source.mind punctuation.separator.comma.mind
+#                                                            ^^^^^ source.mind
+#                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                           ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                             ^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                                                     ^ source.mind
+#                                                                                                      ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                         ^ source.mind punctuation.brackets.round.mind
+#                                                                                                          ^ source.mind
+#                                                                                                           ^ source.mind punctuation.brackets.curly.mind
+#                                                                                                            ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    if req.action == Action::TransferAsset {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^ source.mind
+#                  ^^ source.mind keyword.operator.comparison.mind
+#                    ^ source.mind
+#                     ^^^^^^ source.mind entity.name.type.mind
+#                           ^^ source.mind punctuation.separator.namespace.mind
+#                             ^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>        return Effect { tag: EffectTag::RequireConfirmation, code: pack_confirm(ConfirmCode::HumanSigned, 600) };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^^^^^^^ source.mind entity.name.type.mind
+#                                      ^^ source.mind punctuation.separator.namespace.mind
+#                                        ^^^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                           ^ source.mind punctuation.separator.comma.mind
+#                                                            ^^^^^ source.mind
+#                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                                ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                           ^^ source.mind punctuation.separator.namespace.mind
+#                                                                                             ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                                                         ^ source.mind
+#                                                                                                          ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                                                                              ^ source.mind
+#                                                                                                               ^ source.mind punctuation.brackets.curly.mind
+#                                                                                                                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 7. Repo rules (common-case-first)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if req.resource == Resource::Repo && req.action == Action::Write {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind punctuation.accessor.mind
+#           ^^^^^^^^^ source.mind
+#                    ^^ source.mind keyword.operator.comparison.mind
+#                      ^ source.mind
+#                       ^^^^^^^^ source.mind entity.name.type.mind
+#                               ^^ source.mind punctuation.separator.namespace.mind
+#                                 ^^^^ source.mind entity.name.type.mind
+#                                     ^ source.mind
+#                                      ^^ source.mind keyword.operator.logical.mind
+#                                        ^^^^ source.mind
+#                                            ^ source.mind punctuation.accessor.mind
+#                                             ^^^^^^^ source.mind
+#                                                    ^^ source.mind keyword.operator.comparison.mind
+#                                                      ^ source.mind
+#                                                       ^^^^^^ source.mind entity.name.type.mind
+#                                                             ^^ source.mind punctuation.separator.namespace.mind
+#                                                               ^^^^^ source.mind entity.name.type.mind
+#                                                                    ^ source.mind
+#                                                                     ^ source.mind punctuation.brackets.curly.mind
+>        let p = req.target.path;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^^^^ source.mind
+#                   ^ source.mind punctuation.accessor.mind
+#                    ^^^^^^ source.mind
+#                          ^ source.mind punctuation.accessor.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>
+>        if starts_with(p, "src/") || starts_with(p, "docs/") {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^ source.mind
+#                          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                           ^^^^ source.mind string.quoted.double.mind
+#                               ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^^ source.mind keyword.operator.logical.mind
+#                                    ^ source.mind
+#                                     ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                     ^^^^^ source.mind string.quoted.double.mind
+#                                                          ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind
+#                                                             ^ source.mind punctuation.brackets.curly.mind
+>            return Effect { tag: EffectTag::Allow, code: 0 };
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.brackets.curly.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.colon.mind
+#                                ^ source.mind
+#                                 ^^^^^^^^^ source.mind entity.name.type.mind
+#                                          ^^ source.mind punctuation.separator.namespace.mind
+#                                            ^^^^^ source.mind entity.name.type.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^ source.mind
+#                                                       ^ source.mind punctuation.separator.colon.mind
+#                                                        ^ source.mind
+#                                                         ^ source.mind constant.numeric.integer.decimal.mind
+#                                                          ^ source.mind
+#                                                           ^ source.mind punctuation.brackets.curly.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>
+>        if starts_with(p, ".github/") || starts_with(p, "infra/") || starts_with(p, "secrets/") {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^ source.mind
+#                          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                           ^^^^^^^^ source.mind string.quoted.double.mind
+#                                   ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind
+#                                      ^^ source.mind keyword.operator.logical.mind
+#                                        ^ source.mind
+#                                         ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                       ^ source.mind
+#                                                        ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                         ^^^^^^ source.mind string.quoted.double.mind
+#                                                               ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                ^ source.mind punctuation.brackets.round.mind
+#                                                                 ^ source.mind
+#                                                                  ^^ source.mind keyword.operator.logical.mind
+#                                                                    ^ source.mind
+#                                                                     ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                                ^ source.mind punctuation.brackets.round.mind
+#                                                                                 ^ source.mind
+#                                                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                                                   ^ source.mind
+#                                                                                    ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#                                                                                     ^^^^^^^^ source.mind string.quoted.double.mind
+#                                                                                             ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                                                                              ^ source.mind punctuation.brackets.round.mind
+#                                                                                               ^ source.mind
+#                                                                                                ^ source.mind punctuation.brackets.curly.mind
+>            return Effect { tag: EffectTag::Deny, code: DenyCode::InfraModification as u32 };
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^^^^^^ source.mind entity.name.type.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.brackets.curly.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.colon.mind
+#                                ^ source.mind
+#                                 ^^^^^^^^^ source.mind entity.name.type.mind
+#                                          ^^ source.mind punctuation.separator.namespace.mind
+#                                            ^^^^ source.mind entity.name.type.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^ source.mind
+#                                                      ^ source.mind punctuation.separator.colon.mind
+#                                                       ^ source.mind
+#                                                        ^^^^^^^^ source.mind entity.name.type.mind
+#                                                                ^^ source.mind punctuation.separator.namespace.mind
+#                                                                  ^^^^^^^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                   ^ source.mind
+#                                                                                    ^^ source.mind keyword.other.as.mind
+#                                                                                      ^ source.mind
+#                                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                                          ^ source.mind
+#                                                                                           ^ source.mind punctuation.brackets.curly.mind
+#                                                                                            ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>
+>    // 8. Default deny (fail-closed)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    Effect { tag: EffectTag::Deny, code: DenyCode::DefaultDeny as u32 }
+#^^^^ source.mind
+#    ^^^^^^ source.mind entity.name.type.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^ source.mind entity.name.type.mind
+#                           ^^ source.mind punctuation.separator.namespace.mind
+#                             ^^^^ source.mind entity.name.type.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^^^^^^^^ source.mind entity.name.type.mind
+#                                                 ^^ source.mind punctuation.separator.namespace.mind
+#                                                   ^^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                              ^ source.mind
+#                                                               ^^ source.mind keyword.other.as.mind
+#                                                                 ^ source.mind
+#                                                                  ^^^ source.mind storage.type.primitive.mind
+#                                                                     ^ source.mind
+#                                                                      ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Gate entry points
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn evaluate_fleet(req: &Request) -> Effect {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^ source.mind
+#                     ^ source.mind punctuation.separator.colon.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.bitwise.mind
+#                        ^^^^^^^ source.mind entity.name.type.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^^ source.mind keyword.operator.arrow.mind
+#                                   ^ source.mind
+#                                    ^^^^^^ source.mind entity.name.type.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>    evaluate(req)
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.function.call.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^ source.mind
+#                ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn evaluate_memory(req: &Request) -> Effect {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.bitwise.mind
+#                         ^^^^^^^ source.mind entity.name.type.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^^ source.mind keyword.operator.arrow.mind
+#                                    ^ source.mind
+#                                     ^^^^^^ source.mind entity.name.type.mind
+#                                           ^ source.mind
+#                                            ^ source.mind punctuation.brackets.curly.mind
+>    evaluate(req)
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.function.call.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^ source.mind
+#                ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn evaluate_git(req: &Request) -> Effect {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^^^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.bitwise.mind
+#                      ^^^^^^^ source.mind entity.name.type.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^^ source.mind keyword.operator.arrow.mind
+#                                 ^ source.mind
+#                                  ^^^^^^ source.mind entity.name.type.mind
+#                                        ^ source.mind
+#                                         ^ source.mind punctuation.brackets.curly.mind
+>    evaluate(req)
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.function.call.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^ source.mind
+#                ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>

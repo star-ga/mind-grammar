@@ -1,0 +1,64 @@
+// SYNTAX TEST "source.mind" "scalar, tensor and prelude types"
+
+    fn narrow(a: i8, b: i16, c: u8, d: u16, e: u32, f: u64, g: usize, h: isize) -> bool {
+//               ^^ storage.type.primitive.mind
+//                      ^^^ storage.type.primitive.mind
+//                              ^^ storage.type.primitive.mind
+//                                     ^^^ storage.type.primitive.mind
+//                                             ^^^ storage.type.primitive.mind
+//                                                     ^^^ storage.type.primitive.mind
+//                                                             ^^^^^ storage.type.primitive.mind
+//                                                                       ^^^^^ storage.type.primitive.mind
+//                                                                                 ^^^^ storage.type.primitive.mind
+        true
+    }
+
+    fn floats(x: f32, y: f64, z: f16, w: bf16, q: q16) -> f64 { y }
+//               ^^^ storage.type.primitive.mind
+//                       ^^^ storage.type.primitive.mind
+//                               ^^^ storage.type.primitive.mind
+//                                       ^^^^ storage.type.primitive.mind
+//                                                ^^^ storage.type.primitive.mind
+
+    fn shift(h: diff tensor<f32[N]>, m: tensor<i32[batch, 10]>) -> diff tensor<f32[N]> {
+//              ^^^^ storage.modifier.mind
+//                   ^^^^^^ storage.type.tensor.mind
+//                         ^ keyword.operator.comparison.mind
+//                          ^^^ storage.type.primitive.mind
+//                              ^ entity.name.type.mind
+        h
+    }
+
+    let w: Tensor<f32, [4, 4]> = load();
+//         ^^^^^^ storage.type.tensor.mind
+    let s: tensor<sparse[csr], f32[8, 8]> = load();
+//                ^^^^^^ keyword.other.mind
+
+    let mut diff: i64 = 0;
+//          ^^^^ variable.other.mind - storage.modifier.mind
+    if diff != 0 { }
+//     ^^^^ - storage.modifier.mind
+
+    fn parse(src: &[u8]) -> Result<i64, i64> { Ok(0) }
+//                ^ keyword.operator.bitwise.mind
+//                  ^^ storage.type.primitive.mind
+//                          ^^^^^^ support.type.prelude.mind
+//                                             ^^ support.constant.prelude.mind
+    fn first(xs: &mut [i64]) -> Option<i64> { None }
+//                ^^^ storage.modifier.mind
+//                              ^^^^^^ support.type.prelude.mind
+//                                            ^^^^ support.constant.prelude.mind
+    fn label() -> String { string_new() }
+//                ^^^^^^ support.type.prelude.mind
+    fn pair() -> (i32, u32) { (1, 2u32) }
+//               ^ punctuation.brackets.round.mind
+    let lut: [f32; 256] = load();
+//            ^^^ storage.type.primitive.mind
+    let point: Point = Point { x: 1, y: 2 };
+//             ^^^^^ entity.name.type.mind
+//                     ^^^^^ entity.name.type.mind
+    let total = SCALE / MAX_ITEMS;
+//              ^^^^^ variable.other.constant.mind
+//                      ^^^^^^^^^ variable.other.constant.mind
+    let q: Q16_16 = to_q(1);
+//         ^^^^^^ entity.name.type.mind - variable.other.constant.mind

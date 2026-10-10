@@ -1,0 +1,53 @@
+// SYNTAX TEST "source.mind" "string, character and number literals"
+
+    let greeting = "line\n\ttab \"quoted\" \\ \0 \'";
+//                 ^ string.quoted.double.mind punctuation.definition.string.begin.mind
+//                      ^^ constant.character.escape.mind
+//                        ^^ constant.character.escape.mind
+//                              ^^ constant.character.escape.mind
+//                                      ^^ constant.character.escape.mind
+//                                         ^^ constant.character.escape.mind
+//                                            ^^ constant.character.escape.mind
+//                                               ^^ constant.character.escape.mind
+//                                                 ^ punctuation.definition.string.end.mind
+    let bad = "\q";
+//             ^^ invalid.illegal.unknown-escape.mind
+
+    let ch = 'T';
+//           ^^^ string.quoted.single.mind
+    let nl = '\n';
+//            ^^ string.quoted.single.mind constant.character.escape.mind
+
+    let a = 42;
+//          ^^ constant.numeric.integer.decimal.mind
+    let b = 120_000;
+//          ^^^^^^^ constant.numeric.integer.decimal.mind
+    let c = 2u32;
+//          ^ constant.numeric.integer.decimal.mind
+//           ^^^ constant.numeric.integer.decimal.mind storage.type.numeric.mind
+    let d = 0usize;
+//           ^^^^^ storage.type.numeric.mind
+    let e = 0xFFu8;
+//          ^^^^ constant.numeric.integer.hexadecimal.mind
+//              ^^ storage.type.numeric.mind
+    let f = 0o755;
+//          ^^^^^ constant.numeric.integer.octal.mind
+    let g = 0b1010_0101i16;
+//          ^^^^^^^^^^^ constant.numeric.integer.binary.mind
+//                     ^^^ storage.type.numeric.mind
+    let h = 3.14159;
+//          ^^^^^^^ constant.numeric.float.mind
+    let k = 1.0e-5;
+//          ^^^^^^ constant.numeric.float.mind
+    let m = 1e5;
+//          ^^^ constant.numeric.float.mind
+    let t = true;
+//          ^^^^ constant.language.boolean.mind
+    let r = 0..10;
+//          ^ constant.numeric.integer.decimal.mind
+//           ^^ keyword.operator.range.mind
+//             ^^ constant.numeric.integer.decimal.mind
+    let x = 48.byte();
+//          ^^ constant.numeric.integer.decimal.mind
+//            ^ punctuation.accessor.mind
+//             ^^^^ entity.name.function.call.mind

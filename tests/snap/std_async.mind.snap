@@ -1,0 +1,1969 @@
+>// std/async.mind -- RFC 0011 Phase A: Scheduler injection + Sender/Receiver
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// algebra + ReplayScheduler (synchronous execution, pure MIND).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Phase A scope: synchronous execution only.  No threads, no real I/O,
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// no WorkStealing scheduler.  The value of Phase A is:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   (1) The API shape -- Scheduler is an explicit first-class argument;
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//       no implicit coloring of functions into sync/async worlds.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   (2) The ReplayScheduler producing a deterministic trace_hash --
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//       the governance-substrate primitive (RFC 0011 §7).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// --- Thunk model (Phase A) ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// MIND does not yet have first-class closures.  Phase A models "work"
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// as an i64 opcode value:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>//   submit(s, work)   -- work IS the base result value (identity thunk)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   then(snd, delta)  -- delta is an addend applied to the pipeline
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   run(s, snd)       -- evaluates: result = thunk + sum(chain[i])
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// This is the simplest honest model for synchronous execution: a thunk
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// that has already been evaluated.  The pipeline composes addends so
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// callers can observe that then-chaining affects the result.  Real
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// closure dispatch is a Phase C concern when TaskGroup and async I/O
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// introduce genuine deferred work.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// --- Determinism contract (RFC 0011 §7) ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// A ReplayScheduler records every event value (submit thunk + each then
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// delta) processed by run() into an append-only trace log.  trace_hash()
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// returns a polynomial rolling hash over the log -- stable across runs,
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// hosts, and microarchitectures because it is pure integer arithmetic.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Identical input sequences => identical trace_hash.  Different input
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// sequences => different trace_hash (with overwhelming probability under
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// the chosen polynomial, verified by the test suite).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// --- Heap-record ABI ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// All three public types are opaque i64 handles into heap records.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// The layout is fixed; callers use the pub accessor functions.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Scheduler record (32 bytes = 4 × 8):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset  0  kind       -- 0=Sync  1=Replay
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset  8  trace_addr -- address of i64 event array
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset 16  trace_len  -- number of recorded events
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset 24  trace_cap  -- capacity of event array
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Sender record (32 bytes = 4 × 8):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset  0  thunk      -- base i64 result value
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset  8  chain_addr -- address of i64 delta array (then-stages)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset 16  chain_len  -- number of chained stages
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset 24  chain_cap  -- capacity of chain array
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Receiver record (8 bytes = 1 × 8):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset  0  value      -- resolved i64 result
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Public API:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn sync_scheduler()               -> i64   (Scheduler handle)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn replay_scheduler()             -> i64   (Scheduler handle)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn sched_kind(s: i64)             -> i64
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn submit(s: i64, work: i64)      -> i64   (Sender handle)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn then(snd: i64, delta: i64)     -> i64   (Sender handle)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn run(s: i64, snd: i64)          -> i64
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn trace_hash(s: i64)             -> i64
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   pub fn recv_value(r: i64)             -> i64
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// --- Scheduler field accessors ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn sched_kind(s: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(s + 0)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn sched_trace_addr(s: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.separator.colon.mind
+#                      ^ source.mind
+#                       ^^^ source.mind storage.type.primitive.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^^ source.mind keyword.operator.arrow.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind
+#                                   ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(s + 8)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn sched_trace_len(s: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(s + 16)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn sched_trace_cap(s: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(s + 24)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Sender field accessors ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn snd_thunk(snd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^ source.mind entity.name.function.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.operator.arrow.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(snd + 0)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn snd_chain_addr(snd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^ source.mind
+#                     ^ source.mind punctuation.separator.colon.mind
+#                      ^ source.mind
+#                       ^^^ source.mind storage.type.primitive.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^^ source.mind keyword.operator.arrow.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind
+#                                   ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(snd + 8)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn snd_chain_len(snd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(snd + 16)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^ source.mind
+#                          ^^ source.mind constant.numeric.integer.decimal.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>fn snd_chain_cap(snd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^^ source.mind keyword.operator.arrow.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(snd + 24)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^ source.mind
+#                          ^^ source.mind constant.numeric.integer.decimal.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Receiver field accessor ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn recv_value(r: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(r + 0)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Scheduler constructors ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn sched_alloc() -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^^ source.mind keyword.operator.arrow.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>    let h: i64 = __mind_alloc(32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 0, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 8, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 16, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 24, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// sync_scheduler -- SyncScheduler; no event recording.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn sync_scheduler() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.operator.arrow.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind
+#                               ^ source.mind punctuation.brackets.curly.mind
+>    let h: i64 = sched_alloc();
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 0, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// replay_scheduler -- ReplayScheduler; records every submitted value in
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// an append-only trace log consumed by trace_hash().
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn replay_scheduler() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    let h: i64 = sched_alloc();
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 0, 1);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Trace log: append a single i64 event ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Only called by run() when kind == 1 (Replay).  Manages its own
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// grow-by-doubling allocation; min-cap 4, matching vec.mind's policy so
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// allocation traces are deterministic.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn trace_append(s: i64, event: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^^^^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind
+#                                    ^^ source.mind keyword.operator.arrow.mind
+#                                      ^ source.mind
+#                                       ^^^ source.mind storage.type.primitive.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>    let old_len: i64 = sched_trace_len(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    let old_cap: i64 = sched_trace_cap(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    let old_addr: i64 = sched_trace_addr(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind punctuation.terminator.statement.mind
+>    let new_cap: i64 = if old_cap == 0 {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.control.mind
+#                         ^^^^^^^^^ source.mind
+#                                  ^^ source.mind keyword.operator.comparison.mind
+#                                    ^ source.mind
+#                                     ^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind
+#                                       ^ source.mind punctuation.brackets.curly.mind
+>        4
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        if old_len < old_cap {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^^^^^^^ source.mind
+#                   ^ source.mind keyword.operator.comparison.mind
+#                    ^^^^^^^^^ source.mind
+#                             ^ source.mind punctuation.brackets.curly.mind
+>            old_cap
+#^^^^^^^^^^^^^^^^^^^^ source.mind
+>        } else {
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind
+#          ^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>            old_cap * 2
+#^^^^^^^^^^^^^^^^^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    let new_addr: i64 = if new_cap == old_cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.control.mind
+#                          ^^^^^^^^^ source.mind
+#                                   ^^ source.mind keyword.operator.comparison.mind
+#                                     ^^^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.brackets.curly.mind
+>        old_addr
+#^^^^^^^^^^^^^^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        let a: i64 = __mind_alloc(new_cap * 8);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^^^^^^^^ source.mind
+#                                          ^ source.mind keyword.operator.arithmetic.mind
+#                                           ^ source.mind
+#                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                             ^ source.mind punctuation.brackets.round.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>        let mut ci: i64 = 0;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^^ source.mind variable.other.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>        while ci < old_len {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^^ source.mind
+#                 ^ source.mind keyword.operator.comparison.mind
+#                  ^^^^^^^^^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+>            __mind_store_i64(a + ci * 8, __mind_load_i64(old_addr + ci * 8));
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^^ source.mind
+#                               ^ source.mind keyword.operator.arithmetic.mind
+#                                ^^^^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^ source.mind
+#                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^ source.mind
+#                                         ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^^^^^^^^^ source.mind
+#                                                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                                                   ^^^^ source.mind
+#                                                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                                                        ^ source.mind
+#                                                                         ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                                            ^ source.mind punctuation.terminator.statement.mind
+>            ci = ci + 1;
+#^^^^^^^^^^^^^^^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+#                       ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        a
+#^^^^^^^^^^ source.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(new_addr + old_len * 8, event);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^^^^ source.mind
+#                              ^ source.mind keyword.operator.arithmetic.mind
+#                               ^^^^^^^^^ source.mind
+#                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                         ^ source.mind
+#                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^^^^^^ source.mind
+#                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                   ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(s + 8, new_addr);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(s + 16, old_len + 1);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^^^ source.mind
+#                                     ^ source.mind keyword.operator.arithmetic.mind
+#                                      ^ source.mind
+#                                       ^ source.mind constant.numeric.integer.decimal.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(s + 24, new_cap);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    0
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Sender constructors ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn snd_alloc(thunk: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^ source.mind entity.name.function.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^^ source.mind keyword.operator.arrow.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind
+#                                ^ source.mind punctuation.brackets.curly.mind
+>    let h: i64 = __mind_alloc(32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 0, thunk);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^^^^^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 8, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 16, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 24, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Chain append: append a delta to a Sender's chain ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a new Sender handle with the extended chain (immutable update
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// semantics: the original handle is not modified).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn snd_chain_append(snd: i64, delta: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind punctuation.separator.colon.mind
+#                        ^ source.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^^^^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^^^ source.mind storage.type.primitive.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind
+#                                          ^^ source.mind keyword.operator.arrow.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind
+#                                                 ^ source.mind punctuation.brackets.curly.mind
+>    let old_thunk: i64 = snd_thunk(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^^^ source.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>    let old_len: i64 = snd_chain_len(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    let old_cap: i64 = snd_chain_cap(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    let old_addr: i64 = snd_chain_addr(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^^^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind punctuation.terminator.statement.mind
+>    let new_cap: i64 = if old_cap == 0 {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.control.mind
+#                         ^^^^^^^^^ source.mind
+#                                  ^^ source.mind keyword.operator.comparison.mind
+#                                    ^ source.mind
+#                                     ^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind
+#                                       ^ source.mind punctuation.brackets.curly.mind
+>        4
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        if old_len < old_cap {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^^^^^^^ source.mind
+#                   ^ source.mind keyword.operator.comparison.mind
+#                    ^^^^^^^^^ source.mind
+#                             ^ source.mind punctuation.brackets.curly.mind
+>            old_cap
+#^^^^^^^^^^^^^^^^^^^^ source.mind
+>        } else {
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind
+#          ^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>            old_cap * 2
+#^^^^^^^^^^^^^^^^^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    let new_addr: i64 = if new_cap == old_cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.control.mind
+#                          ^^^^^^^^^ source.mind
+#                                   ^^ source.mind keyword.operator.comparison.mind
+#                                     ^^^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.brackets.curly.mind
+>        old_addr
+#^^^^^^^^^^^^^^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        let a: i64 = __mind_alloc(new_cap * 8);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^^^^^^^^ source.mind
+#                                          ^ source.mind keyword.operator.arithmetic.mind
+#                                           ^ source.mind
+#                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                             ^ source.mind punctuation.brackets.round.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>        let mut ci: i64 = 0;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^^ source.mind variable.other.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>        while ci < old_len {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^^ source.mind
+#                 ^ source.mind keyword.operator.comparison.mind
+#                  ^^^^^^^^^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+>            __mind_store_i64(a + ci * 8, __mind_load_i64(old_addr + ci * 8));
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^^ source.mind
+#                               ^ source.mind keyword.operator.arithmetic.mind
+#                                ^^^^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^ source.mind
+#                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^ source.mind
+#                                         ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^^^^^^^^^ source.mind
+#                                                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                                                   ^^^^ source.mind
+#                                                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                                                        ^ source.mind
+#                                                                         ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                                            ^ source.mind punctuation.terminator.statement.mind
+>            ci = ci + 1;
+#^^^^^^^^^^^^^^^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+#                       ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        a
+#^^^^^^^^^^ source.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(new_addr + old_len * 8, delta);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^^^^ source.mind
+#                              ^ source.mind keyword.operator.arithmetic.mind
+#                               ^^^^^^^^^ source.mind
+#                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                         ^ source.mind
+#                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^^^^^^ source.mind
+#                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                   ^ source.mind punctuation.terminator.statement.mind
+>    let h: i64 = __mind_alloc(32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 0, old_thunk);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^^^^^^^^^ source.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 8, new_addr);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 16, old_len + 1);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^^^ source.mind
+#                                     ^ source.mind keyword.operator.arithmetic.mind
+#                                      ^ source.mind
+#                                       ^ source.mind constant.numeric.integer.decimal.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h + 24, new_cap);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- Public pipeline API ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// submit -- enqueue a unit of work; returns a Sender handle.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// work is the i64 opcode value: for Phase A (sync), this is the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// immediate result.  The scheduler is accepted to maintain the API
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// shape required by RFC 0011 §3.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn submit(s: i64, work: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^ source.mind entity.name.function.mind
+#             ^ source.mind punctuation.brackets.round.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind punctuation.separator.comma.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^^ source.mind keyword.operator.arrow.mind
+#                                   ^ source.mind
+#                                    ^^^ source.mind storage.type.primitive.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.curly.mind
+>    snd_alloc(work)
+#^^^^ source.mind
+#    ^^^^^^^^^ source.mind entity.name.function.call.mind
+#             ^ source.mind punctuation.brackets.round.mind
+#              ^^^^ source.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// then -- compose: run sender, feed result into the next stage.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// delta is the i64 addend applied to the pipeline value.  The Sender
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// is treated as a value (immutable); a new Sender is returned.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn then(snd: i64, delta: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^ source.mind entity.name.function.mind
+#           ^ source.mind punctuation.brackets.round.mind
+#            ^^^ source.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind punctuation.separator.comma.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^^ source.mind keyword.operator.arrow.mind
+#                                    ^ source.mind
+#                                     ^^^ source.mind storage.type.primitive.mind
+#                                        ^ source.mind
+#                                         ^ source.mind punctuation.brackets.curly.mind
+>    snd_chain_append(snd, delta)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^^^^^^ source.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// run -- evaluate the pipeline through the scheduler; returns the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// final i64 value.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Evaluation: result = thunk + chain[0] + chain[1] + ... + chain[n-1]
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// For a ReplayScheduler (kind == 1) every value participating in the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// computation is appended to the trace log in deterministic order:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// first the thunk, then each chain element left-to-right.  This
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// produces a total log that is byte-identical for identical pipelines
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// regardless of run, host, or microarchitecture.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn run(s: i64, snd: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^ source.mind entity.name.function.mind
+#          ^ source.mind punctuation.brackets.round.mind
+#           ^ source.mind
+#            ^ source.mind punctuation.separator.colon.mind
+#             ^ source.mind
+#              ^^^ source.mind storage.type.primitive.mind
+#                 ^ source.mind punctuation.separator.comma.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    let thunk: i64 = snd_thunk(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^ source.mind entity.name.function.call.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^^ source.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    let chain_addr: i64 = snd_chain_addr(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^ source.mind variable.other.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^ source.mind
+#                          ^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^^^ source.mind
+#                                            ^ source.mind punctuation.brackets.round.mind
+#                                             ^ source.mind punctuation.terminator.statement.mind
+>    let chain_len: i64 = snd_chain_len(snd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^^^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind punctuation.terminator.statement.mind
+>    let kind: i64 = sched_kind(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind punctuation.separator.colon.mind
+#             ^ source.mind
+#              ^^^ source.mind storage.type.primitive.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^ source.mind
+#                    ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    if kind == 1 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^ source.mind
+#            ^^ source.mind keyword.operator.comparison.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.brackets.curly.mind
+>        let _ = trace_append(s, thunk);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^^^^ source.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut result: i64 = thunk;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind variable.other.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^^^^^^ source.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i < chain_len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^^^^^^^^^^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>        let delta: i64 = __mind_load_i64(chain_addr + i * 8);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^^^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^^^^^^^^^^^ source.mind
+#                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                     ^^^ source.mind
+#                                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                                         ^ source.mind
+#                                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>        if kind == 1 {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^^^^ source.mind
+#                ^^ source.mind keyword.operator.comparison.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.brackets.curly.mind
+>            let _ = trace_append(s, delta);
+#^^^^^^^^^^^^ source.mind
+#            ^^^ source.mind storage.type.let.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^ source.mind
+#                    ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^^^ source.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        result = result + delta;
+#^^^^^^^^^^^^^^^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^^^^^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^^^^^^ source.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    result
+#^^^^^^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// --- trace_hash: governance-substrate determinism primitive ---
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Returns a polynomial rolling hash over the Scheduler's event log.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Hash function: FNV-1a variant adapted for i64 words.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>//   h = FNV_OFFSET_BASIS
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   for each event e in log:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//     h = (h XOR e) * FNV_PRIME_64   (wrapping i64 multiply)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// FNV_OFFSET_BASIS = -3750763034362895579  (0xcbf29ce484222325 as i64)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// FNV_PRIME_64     =  1099511628211         (0x00000100000001b3 as i64)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// This hash is:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - Byte-stable: pure integer arithmetic, no float, no platform I/O.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - Deterministic: same log bytes => same hash on every host.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - Avalanche: single-bit change in any event flips ~50% of output bits.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - Fast: O(n) single pass over the log.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// For a SyncScheduler (kind == 0) the log is empty; returns 0.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn fnv_offset() -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^ source.mind entity.name.function.mind
+#             ^ source.mind punctuation.brackets.round.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^^ source.mind keyword.operator.arrow.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind punctuation.brackets.curly.mind
+>    // 0xcbf29ce484222325 as signed i64 = -3750763034362895579
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    0 - 3750763034362895579
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+#     ^ source.mind
+#      ^ source.mind keyword.operator.arithmetic.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^^^^^^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn fnv_prime() -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^ source.mind entity.name.function.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^ source.mind punctuation.brackets.round.mind
+#              ^ source.mind
+#               ^^ source.mind keyword.operator.arrow.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+>    1099511628211
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn trace_hash(s: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    let len: i64 = sched_trace_len(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind variable.other.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^ source.mind storage.type.primitive.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^ source.mind
+#                   ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    let addr: i64 = sched_trace_addr(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind punctuation.separator.colon.mind
+#             ^ source.mind
+#              ^^^ source.mind storage.type.primitive.mind
+#                 ^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^ source.mind
+#                    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>    if len == 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^ source.mind
+#           ^^ source.mind keyword.operator.comparison.mind
+#             ^ source.mind
+#              ^ source.mind constant.numeric.integer.decimal.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut h: i64 = fnv_offset();
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i < len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>        let event: i64 = __mind_load_i64(addr + i * 8);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^^^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^^^^^ source.mind
+#                                              ^ source.mind keyword.operator.arithmetic.mind
+#                                               ^^^ source.mind
+#                                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind constant.numeric.integer.decimal.mind
+#                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                      ^ source.mind punctuation.terminator.statement.mind
+>        h = (h ^ event) * fnv_prime();
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^ source.mind
+#               ^ source.mind keyword.operator.bitwise.mind
+#                ^^^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.arithmetic.mind
+#                         ^ source.mind
+#                          ^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                   ^ source.mind punctuation.brackets.round.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>

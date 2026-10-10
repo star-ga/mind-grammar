@@ -1,0 +1,1706 @@
+>// Tiny Edge Model Example
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Optimized for embedded deployment with <200 KB footprint
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Target: Binary classification on resource-constrained devices
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Architecture: Minimal 2-layer network with quantization-aware design
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Memory budget: <200 KB total (model + runtime)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Optimization strategies:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 1. Small hidden dimensions (16, 8)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 2. No bias terms (save parameters)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 3. ReLU activation (simple, hardware-friendly)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 4. int8 quantization-ready (train in f32, deploy in i8)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Model Architecture
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// Layer 1: Input(10) → Hidden(16) with ReLU
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Parameters: 10×16 = 160 f32 weights = 640 bytes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn layer1(x: diff tensor<f32[10]>, w1: diff tensor<f32[10, 16]>) -> diff tensor<f32[16]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^ source.mind entity.name.function.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^^ source.mind storage.modifier.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind storage.type.tensor.mind
+#                        ^ source.mind keyword.operator.comparison.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind keyword.operator.comparison.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^ source.mind
+#                                     ^ source.mind punctuation.separator.colon.mind
+#                                      ^ source.mind
+#                                       ^^^^ source.mind storage.modifier.mind
+#                                           ^ source.mind
+#                                            ^^^^^^ source.mind storage.type.tensor.mind
+#                                                  ^ source.mind keyword.operator.comparison.mind
+#                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                      ^ source.mind punctuation.brackets.square.mind
+#                                                       ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                          ^ source.mind
+#                                                           ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                             ^ source.mind punctuation.brackets.square.mind
+#                                                              ^ source.mind keyword.operator.comparison.mind
+#                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                ^ source.mind
+#                                                                 ^^ source.mind keyword.operator.arrow.mind
+#                                                                   ^ source.mind
+#                                                                    ^^^^ source.mind storage.modifier.mind
+#                                                                        ^ source.mind
+#                                                                         ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                               ^ source.mind keyword.operator.comparison.mind
+#                                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                                   ^ source.mind punctuation.brackets.square.mind
+#                                                                                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                      ^ source.mind punctuation.brackets.square.mind
+#                                                                                       ^ source.mind keyword.operator.comparison.mind
+#                                                                                        ^ source.mind
+#                                                                                         ^ source.mind punctuation.brackets.curly.mind
+>    let z = matmul(reshape(x, [1, 10]), w1);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.square.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.square.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^^^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind punctuation.terminator.statement.mind
+>    // [1,10] @ [10,16] = [1,16]
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let h = relu(reshape(z, [16]));
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^ source.mind entity.name.function.call.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    // ReLU activation
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    return h;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^^ source.mind
+#            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Layer 2: Hidden(16) → Hidden(8) with ReLU
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Parameters: 16×8 = 128 f32 weights = 512 bytes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn layer2(h: diff tensor<f32[16]>, w2: diff tensor<f32[16, 8]>) -> diff tensor<f32[8]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^ source.mind entity.name.function.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^^ source.mind storage.modifier.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind storage.type.tensor.mind
+#                        ^ source.mind keyword.operator.comparison.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind keyword.operator.comparison.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^ source.mind
+#                                     ^ source.mind punctuation.separator.colon.mind
+#                                      ^ source.mind
+#                                       ^^^^ source.mind storage.modifier.mind
+#                                           ^ source.mind
+#                                            ^^^^^^ source.mind storage.type.tensor.mind
+#                                                  ^ source.mind keyword.operator.comparison.mind
+#                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                      ^ source.mind punctuation.brackets.square.mind
+#                                                       ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                          ^ source.mind
+#                                                           ^ source.mind constant.numeric.integer.decimal.mind
+#                                                            ^ source.mind punctuation.brackets.square.mind
+#                                                             ^ source.mind keyword.operator.comparison.mind
+#                                                              ^ source.mind punctuation.brackets.round.mind
+#                                                               ^ source.mind
+#                                                                ^^ source.mind keyword.operator.arrow.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^^ source.mind storage.modifier.mind
+#                                                                       ^ source.mind
+#                                                                        ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                              ^ source.mind keyword.operator.comparison.mind
+#                                                                               ^^^ source.mind storage.type.primitive.mind
+#                                                                                  ^ source.mind punctuation.brackets.square.mind
+#                                                                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                                     ^ source.mind keyword.operator.comparison.mind
+#                                                                                      ^ source.mind
+#                                                                                       ^ source.mind punctuation.brackets.curly.mind
+>    let z = matmul(reshape(h, [1, 16]), w2);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.square.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.square.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^^^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind punctuation.terminator.statement.mind
+>    // [1,16] @ [16,8] = [1,8]
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let h2 = relu(reshape(z, [8]));
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind
+#           ^ source.mind keyword.operator.assignment.mind
+#            ^ source.mind
+#             ^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^^^^^ source.mind entity.name.function.call.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^ source.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind punctuation.brackets.square.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    // ReLU activation
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    return h2;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^^^ source.mind
+#             ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Output layer: Hidden(8) → Output(1) for binary classification
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Parameters: 8×1 = 8 f32 weights = 32 bytes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn output_layer(h: diff tensor<f32[8]>, w3: diff tensor<f32[8, 1]>) -> diff tensor<f32[]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^^ source.mind storage.modifier.mind
+#                       ^ source.mind
+#                        ^^^^^^ source.mind storage.type.tensor.mind
+#                              ^ source.mind keyword.operator.comparison.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.brackets.square.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.square.mind
+#                                     ^ source.mind keyword.operator.comparison.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^^^ source.mind
+#                                          ^ source.mind punctuation.separator.colon.mind
+#                                           ^ source.mind
+#                                            ^^^^ source.mind storage.modifier.mind
+#                                                ^ source.mind
+#                                                 ^^^^^^ source.mind storage.type.tensor.mind
+#                                                       ^ source.mind keyword.operator.comparison.mind
+#                                                        ^^^ source.mind storage.type.primitive.mind
+#                                                           ^ source.mind punctuation.brackets.square.mind
+#                                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                                             ^ source.mind punctuation.separator.comma.mind
+#                                                              ^ source.mind
+#                                                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                ^ source.mind punctuation.brackets.square.mind
+#                                                                 ^ source.mind keyword.operator.comparison.mind
+#                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind keyword.operator.arrow.mind
+#                                                                      ^ source.mind
+#                                                                       ^^^^ source.mind storage.modifier.mind
+#                                                                           ^ source.mind
+#                                                                            ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                  ^ source.mind keyword.operator.comparison.mind
+#                                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                                      ^ source.mind punctuation.brackets.square.mind
+#                                                                                       ^ source.mind punctuation.brackets.square.mind
+#                                                                                        ^ source.mind keyword.operator.comparison.mind
+#                                                                                         ^ source.mind
+#                                                                                          ^ source.mind punctuation.brackets.curly.mind
+>    let z = matmul(reshape(h, [1, 8]), w3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.square.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.brackets.square.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.separator.comma.mind
+#                                      ^^^ source.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind punctuation.terminator.statement.mind
+>    // [1,8] @ [8,1] = [1,1]
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let logit = reshape(z, []);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^^^ source.mind entity.name.function.call.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.brackets.square.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    // Scalar output
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    return sigmoid(logit);
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^ source.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind punctuation.terminator.statement.mind
+>    // Probability ∈ [0,1]
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Full forward pass (works for both training and inference)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn predict(x: diff tensor<f32[10]>, w1: diff tensor<f32[10, 16]>, w2: diff tensor<f32[16, 8]>, w3: diff tensor<f32[8, 1]>) -> diff tensor<f32[]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^ source.mind entity.name.function.mind
+#          ^ source.mind punctuation.brackets.round.mind
+#           ^ source.mind
+#            ^ source.mind punctuation.separator.colon.mind
+#             ^ source.mind
+#              ^^^^ source.mind storage.modifier.mind
+#                  ^ source.mind
+#                   ^^^^^^ source.mind storage.type.tensor.mind
+#                         ^ source.mind keyword.operator.comparison.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.brackets.square.mind
+#                                 ^ source.mind keyword.operator.comparison.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^ source.mind
+#                                      ^ source.mind punctuation.separator.colon.mind
+#                                       ^ source.mind
+#                                        ^^^^ source.mind storage.modifier.mind
+#                                            ^ source.mind
+#                                             ^^^^^^ source.mind storage.type.tensor.mind
+#                                                   ^ source.mind keyword.operator.comparison.mind
+#                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                       ^ source.mind punctuation.brackets.square.mind
+#                                                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                           ^ source.mind
+#                                                            ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                              ^ source.mind punctuation.brackets.square.mind
+#                                                               ^ source.mind keyword.operator.comparison.mind
+#                                                                ^ source.mind punctuation.separator.comma.mind
+#                                                                 ^^^ source.mind
+#                                                                    ^ source.mind punctuation.separator.colon.mind
+#                                                                     ^ source.mind
+#                                                                      ^^^^ source.mind storage.modifier.mind
+#                                                                          ^ source.mind
+#                                                                           ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                 ^ source.mind keyword.operator.comparison.mind
+#                                                                                  ^^^ source.mind storage.type.primitive.mind
+#                                                                                     ^ source.mind punctuation.brackets.square.mind
+#                                                                                      ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                                         ^ source.mind
+#                                                                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                           ^ source.mind punctuation.brackets.square.mind
+#                                                                                            ^ source.mind keyword.operator.comparison.mind
+#                                                                                             ^ source.mind punctuation.separator.comma.mind
+#                                                                                              ^^^ source.mind
+#                                                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                                                  ^ source.mind
+#                                                                                                   ^^^^ source.mind storage.modifier.mind
+#                                                                                                       ^ source.mind
+#                                                                                                        ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                              ^ source.mind keyword.operator.comparison.mind
+#                                                                                                               ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                  ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                     ^ source.mind
+#                                                                                                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                       ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                        ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                         ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                          ^ source.mind
+#                                                                                                                           ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                                             ^ source.mind
+#                                                                                                                              ^^^^ source.mind storage.modifier.mind
+#                                                                                                                                  ^ source.mind
+#                                                                                                                                   ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                                                         ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                          ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                             ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                              ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                               ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                ^ source.mind
+#                                                                                                                                                 ^ source.mind punctuation.brackets.curly.mind
+>    let h1 = layer1(x, w1);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind
+#           ^ source.mind keyword.operator.assignment.mind
+#            ^ source.mind
+#             ^^^^^^ source.mind entity.name.function.call.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.separator.comma.mind
+#                      ^^^ source.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind punctuation.terminator.statement.mind
+>    let h2 = layer2(h1, w2);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind
+#           ^ source.mind keyword.operator.assignment.mind
+#            ^ source.mind
+#             ^^^^^^ source.mind entity.name.function.call.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^ source.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    let prob = output_layer(h2, w3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.assignment.mind
+#              ^ source.mind
+#               ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^^ source.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^ source.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    return prob;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^^^^^ source.mind
+#               ^ source.mind punctuation.terminator.statement.mind
+>    // Threshold at 0.5 for binary decision
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Quantization-Aware Helpers (for deployment)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// Simulated int8 quantization (scale-based)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// In deployment: use fixed-point arithmetic or int8 SIMD
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn quantize_weights(w: tensor<f32[]>, scale: f32) -> tensor<f32[]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.separator.colon.mind
+#                      ^ source.mind
+#                       ^^^^^^ source.mind storage.type.tensor.mind
+#                             ^ source.mind keyword.operator.comparison.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.brackets.square.mind
+#                                  ^ source.mind punctuation.brackets.square.mind
+#                                   ^ source.mind keyword.operator.comparison.mind
+#                                    ^ source.mind punctuation.separator.comma.mind
+#                                     ^^^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.colon.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind keyword.operator.arrow.mind
+#                                                    ^ source.mind
+#                                                     ^^^^^^ source.mind storage.type.tensor.mind
+#                                                           ^ source.mind keyword.operator.comparison.mind
+#                                                            ^^^ source.mind storage.type.primitive.mind
+#                                                               ^ source.mind punctuation.brackets.square.mind
+#                                                                ^ source.mind punctuation.brackets.square.mind
+#                                                                 ^ source.mind keyword.operator.comparison.mind
+#                                                                  ^ source.mind
+#                                                                   ^ source.mind punctuation.brackets.curly.mind
+>    // Quantize: w_int8 = round(w / scale)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // Dequantize for inference: w_float = w_int8 * scale
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let w_scaled = w / scale;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^^^ source.mind
+#                     ^ source.mind keyword.operator.arithmetic.mind
+#                      ^^^^^^ source.mind
+#                            ^ source.mind punctuation.terminator.statement.mind
+>    return round(w_scaled) * scale;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^ source.mind entity.name.function.call.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^^^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^^^^^^ source.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    // Simulated quantization
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Quantized inference path (simulated)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn predict_quantized(x: tensor<f32[10]>, w1_quantized: tensor<f32[10, 16]>, w2_quantized: tensor<f32[16, 8]>, w3_quantized: tensor<f32[8, 1]>, scale1: f32, scale2: f32, scale3: f32) -> tensor<f32[]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^^^^ source.mind storage.type.tensor.mind
+#                              ^ source.mind keyword.operator.comparison.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.brackets.square.mind
+#                                   ^^ source.mind constant.numeric.integer.decimal.mind
+#                                     ^ source.mind punctuation.brackets.square.mind
+#                                      ^ source.mind keyword.operator.comparison.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^^^^^^^^^^^^^ source.mind
+#                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                      ^ source.mind
+#                                                       ^^^^^^ source.mind storage.type.tensor.mind
+#                                                             ^ source.mind keyword.operator.comparison.mind
+#                                                              ^^^ source.mind storage.type.primitive.mind
+#                                                                 ^ source.mind punctuation.brackets.square.mind
+#                                                                  ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                     ^ source.mind
+#                                                                      ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                        ^ source.mind punctuation.brackets.square.mind
+#                                                                         ^ source.mind keyword.operator.comparison.mind
+#                                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                                           ^^^^^^^^^^^^^ source.mind
+#                                                                                        ^ source.mind punctuation.separator.colon.mind
+#                                                                                         ^ source.mind
+#                                                                                          ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                ^ source.mind keyword.operator.comparison.mind
+#                                                                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                       ^ source.mind punctuation.separator.comma.mind
+#                                                                                                        ^ source.mind
+#                                                                                                         ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                          ^ source.mind punctuation.brackets.square.mind
+#                                                                                                           ^ source.mind keyword.operator.comparison.mind
+#                                                                                                            ^ source.mind punctuation.separator.comma.mind
+#                                                                                                             ^^^^^^^^^^^^^ source.mind
+#                                                                                                                          ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                           ^ source.mind
+#                                                                                                                            ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                                                  ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                      ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                       ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                         ^ source.mind
+#                                                                                                                                          ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                                           ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                            ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                             ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                              ^^^^^^^ source.mind
+#                                                                                                                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                                                      ^ source.mind
+#                                                                                                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                           ^^^^^^^ source.mind
+#                                                                                                                                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                                                                   ^ source.mind
+#                                                                                                                                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                                                       ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                                        ^^^^^^^ source.mind
+#                                                                                                                                                                               ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                                                                                ^ source.mind
+#                                                                                                                                                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                                                     ^ source.mind
+#                                                                                                                                                                                      ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                                                                                                        ^ source.mind
+#                                                                                                                                                                                         ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                                                                                                               ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                                                                                   ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                                                                                     ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                                                                      ^ source.mind
+#                                                                                                                                                                                                       ^ source.mind punctuation.brackets.curly.mind
+>    // Dequantize weights for float32 inference
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let w1_dequantized = w1_quantized * scale1;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind variable.other.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^^^^^^^^^^^^^^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>    let w2_dequantized = w2_quantized * scale2;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind variable.other.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^^^^^^^^^^^^^^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>    let w3_dequantized = w3_quantized * scale3;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind variable.other.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^^^^^^^^^^^^^^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>    return predict(x, w1_dequantized, w2_dequantized, w3_dequantized);
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.separator.comma.mind
+#                     ^^^^^^^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.comma.mind
+#                                     ^^^^^^^^^^^^^^^ source.mind
+#                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                     ^^^^^^^^^^^^^^^ source.mind
+#                                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                                     ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Memory Footprint Analysis
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// Total parameters:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Layer 1: 10×16 = 160 weights
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Layer 2: 16×8  = 128 weights
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Layer 3: 8×1   = 8 weights
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Total:         = 296 weights
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Memory (f32):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   296 weights × 4 bytes = 1,184 bytes = 1.2 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Memory (int8 quantized):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   296 weights × 1 byte  = 296 bytes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   3 scale factors × 4 bytes = 12 bytes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Total:                = 308 bytes = 0.3 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Runtime overhead (estimated):
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   MIND minimal runtime: ~50 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Standard library: ~30 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Stack/heap: ~10 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   Total runtime: ~90 KB
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// **Total footprint with int8 quantization: ~90.3 KB** ✓ (well under 200 KB)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Training Code (for completeness)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// Binary cross-entropy loss
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn binary_cross_entropy(pred: diff tensor<f32[]>, label: tensor<f32[]>) -> diff tensor<f32[]> {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^^^^ source.mind
+#                            ^ source.mind punctuation.separator.colon.mind
+#                             ^ source.mind
+#                              ^^^^ source.mind storage.modifier.mind
+#                                  ^ source.mind
+#                                   ^^^^^^ source.mind storage.type.tensor.mind
+#                                         ^ source.mind keyword.operator.comparison.mind
+#                                          ^^^ source.mind storage.type.primitive.mind
+#                                             ^ source.mind punctuation.brackets.square.mind
+#                                              ^ source.mind punctuation.brackets.square.mind
+#                                               ^ source.mind keyword.operator.comparison.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^^ source.mind
+#                                                       ^ source.mind punctuation.separator.colon.mind
+#                                                        ^ source.mind
+#                                                         ^^^^^^ source.mind storage.type.tensor.mind
+#                                                               ^ source.mind keyword.operator.comparison.mind
+#                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                   ^ source.mind punctuation.brackets.square.mind
+#                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                     ^ source.mind keyword.operator.comparison.mind
+#                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                       ^ source.mind
+#                                                                        ^^ source.mind keyword.operator.arrow.mind
+#                                                                          ^ source.mind
+#                                                                           ^^^^ source.mind storage.modifier.mind
+#                                                                               ^ source.mind
+#                                                                                ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                      ^ source.mind keyword.operator.comparison.mind
+#                                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                                          ^ source.mind punctuation.brackets.square.mind
+#                                                                                           ^ source.mind punctuation.brackets.square.mind
+#                                                                                            ^ source.mind keyword.operator.comparison.mind
+#                                                                                             ^ source.mind
+#                                                                                              ^ source.mind punctuation.brackets.curly.mind
+>    // BCE = -[y·log(p) + (1-y)·log(1-p)]
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let log_pred = log(pred + 0.0000001);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^ source.mind
+#                   ^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^^^^^ source.mind
+#                            ^ source.mind keyword.operator.arithmetic.mind
+#                             ^ source.mind
+#                              ^^^^^^^^^ source.mind constant.numeric.float.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    // Numerical stability
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let log_one_minus_pred = log(1.0 - pred + 0.0000001);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^^^^^ source.mind variable.other.mind
+#                          ^ source.mind
+#                           ^ source.mind keyword.operator.assignment.mind
+#                            ^ source.mind
+#                             ^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^^^ source.mind constant.numeric.float.mind
+#                                    ^ source.mind
+#                                     ^ source.mind keyword.operator.arithmetic.mind
+#                                      ^^^^^^ source.mind
+#                                            ^ source.mind keyword.operator.arithmetic.mind
+#                                             ^ source.mind
+#                                              ^^^^^^^^^ source.mind constant.numeric.float.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    let loss = -(label * log_pred + (1.0 - label) * log_one_minus_pred);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.assignment.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.arithmetic.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^^^^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^^^^^^^^^^ source.mind
+#                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^ source.mind constant.numeric.float.mind
+#                                        ^ source.mind
+#                                         ^ source.mind keyword.operator.arithmetic.mind
+#                                          ^^^^^^ source.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                                   ^^^^^^^^^^^^^^^^^^^ source.mind
+#                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                       ^ source.mind punctuation.terminator.statement.mind
+>    return loss;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^^^^^ source.mind
+#               ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// Updated parameters returned by a training step
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// (passed by address as a #[repr(C)] struct, not a by-value tuple)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>#[repr(C)]
+#^ source.mind meta.attribute.mind punctuation.definition.attribute.mind
+# ^ source.mind meta.attribute.mind punctuation.brackets.attribute.begin.mind
+#  ^^^^ source.mind meta.attribute.mind entity.other.attribute-name.mind
+#      ^ source.mind meta.attribute.mind punctuation.brackets.round.mind
+#       ^ source.mind meta.attribute.mind
+#        ^ source.mind meta.attribute.mind punctuation.brackets.round.mind
+#         ^ source.mind meta.attribute.mind punctuation.brackets.attribute.end.mind
+>struct EdgeParams {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.type.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>    w1: diff tensor<f32[10, 16]>,
+#^^^^^^ source.mind
+#      ^ source.mind punctuation.separator.colon.mind
+#       ^ source.mind
+#        ^^^^ source.mind storage.modifier.mind
+#            ^ source.mind
+#             ^^^^^^ source.mind storage.type.tensor.mind
+#                   ^ source.mind keyword.operator.comparison.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.square.mind
+#                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.brackets.square.mind
+#                               ^ source.mind keyword.operator.comparison.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+>    w2: diff tensor<f32[16, 8]>,
+#^^^^^^ source.mind
+#      ^ source.mind punctuation.separator.colon.mind
+#       ^ source.mind
+#        ^^^^ source.mind storage.modifier.mind
+#            ^ source.mind
+#             ^^^^^^ source.mind storage.type.tensor.mind
+#                   ^ source.mind keyword.operator.comparison.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.square.mind
+#                        ^^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^ source.mind keyword.operator.comparison.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+>    w3: diff tensor<f32[8, 1]>,
+#^^^^^^ source.mind
+#      ^ source.mind punctuation.separator.colon.mind
+#       ^ source.mind
+#        ^^^^ source.mind storage.modifier.mind
+#            ^ source.mind
+#             ^^^^^^ source.mind storage.type.tensor.mind
+#                   ^ source.mind keyword.operator.comparison.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.square.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^ source.mind
+#                           ^ source.mind constant.numeric.integer.decimal.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^ source.mind keyword.operator.comparison.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// SGD training step
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>fn train_step(x: diff tensor<f32[10]>, label: tensor<f32[]>, w1: diff tensor<f32[10, 16]>, w2: diff tensor<f32[16, 8]>, w3: diff tensor<f32[8, 1]>, lr: f32) -> EdgeParams {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^ source.mind entity.name.function.mind
+#             ^ source.mind punctuation.brackets.round.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^^ source.mind storage.modifier.mind
+#                     ^ source.mind
+#                      ^^^^^^ source.mind storage.type.tensor.mind
+#                            ^ source.mind keyword.operator.comparison.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.brackets.square.mind
+#                                 ^^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.brackets.square.mind
+#                                    ^ source.mind keyword.operator.comparison.mind
+#                                     ^ source.mind punctuation.separator.comma.mind
+#                                      ^^^^^^ source.mind
+#                                            ^ source.mind punctuation.separator.colon.mind
+#                                             ^ source.mind
+#                                              ^^^^^^ source.mind storage.type.tensor.mind
+#                                                    ^ source.mind keyword.operator.comparison.mind
+#                                                     ^^^ source.mind storage.type.primitive.mind
+#                                                        ^ source.mind punctuation.brackets.square.mind
+#                                                         ^ source.mind punctuation.brackets.square.mind
+#                                                          ^ source.mind keyword.operator.comparison.mind
+#                                                           ^ source.mind punctuation.separator.comma.mind
+#                                                            ^^^ source.mind
+#                                                               ^ source.mind punctuation.separator.colon.mind
+#                                                                ^ source.mind
+#                                                                 ^^^^ source.mind storage.modifier.mind
+#                                                                     ^ source.mind
+#                                                                      ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                            ^ source.mind keyword.operator.comparison.mind
+#                                                                             ^^^ source.mind storage.type.primitive.mind
+#                                                                                ^ source.mind punctuation.brackets.square.mind
+#                                                                                 ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                                                    ^ source.mind
+#                                                                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                       ^ source.mind punctuation.brackets.square.mind
+#                                                                                        ^ source.mind keyword.operator.comparison.mind
+#                                                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                                                          ^^^ source.mind
+#                                                                                             ^ source.mind punctuation.separator.colon.mind
+#                                                                                              ^ source.mind
+#                                                                                               ^^^^ source.mind storage.modifier.mind
+#                                                                                                   ^ source.mind
+#                                                                                                    ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                          ^ source.mind keyword.operator.comparison.mind
+#                                                                                                           ^^^ source.mind storage.type.primitive.mind
+#                                                                                                              ^ source.mind punctuation.brackets.square.mind
+#                                                                                                               ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                  ^ source.mind
+#                                                                                                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                    ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                     ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                       ^^^ source.mind
+#                                                                                                                          ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                           ^ source.mind
+#                                                                                                                            ^^^^ source.mind storage.modifier.mind
+#                                                                                                                                ^ source.mind
+#                                                                                                                                 ^^^^^^ source.mind storage.type.tensor.mind
+#                                                                                                                                       ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                        ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                           ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                                             ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                              ^ source.mind
+#                                                                                                                                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                                                                                ^ source.mind punctuation.brackets.square.mind
+#                                                                                                                                                 ^ source.mind keyword.operator.comparison.mind
+#                                                                                                                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                                                                                                                   ^^^ source.mind
+#                                                                                                                                                      ^ source.mind punctuation.separator.colon.mind
+#                                                                                                                                                       ^ source.mind
+#                                                                                                                                                        ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                                                                                                                            ^ source.mind
+#                                                                                                                                                             ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                                                                               ^ source.mind
+#                                                                                                                                                                ^^^^^^^^^^ source.mind entity.name.type.mind
+#                                                                                                                                                                          ^ source.mind
+#                                                                                                                                                                           ^ source.mind punctuation.brackets.curly.mind
+>    // Forward
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let pred = predict(x, w1, w2, w3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.assignment.mind
+#              ^ source.mind
+#               ^^^^^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^^^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^^ source.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    let loss = binary_cross_entropy(pred, label);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.assignment.mind
+#              ^ source.mind
+#               ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                   ^ source.mind punctuation.brackets.round.mind
+#                                    ^^^^ source.mind
+#                                        ^ source.mind punctuation.separator.comma.mind
+#                                         ^^^^^^ source.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+#                                                ^ source.mind punctuation.terminator.statement.mind
+>
+>    // Backward
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let grad_w1 = backward(loss, w1);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^ source.mind
+#                                   ^ source.mind punctuation.brackets.round.mind
+#                                    ^ source.mind punctuation.terminator.statement.mind
+>    let grad_w2 = backward(loss, w2);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^ source.mind
+#                                   ^ source.mind punctuation.brackets.round.mind
+#                                    ^ source.mind punctuation.terminator.statement.mind
+>    let grad_w3 = backward(loss, w3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^ source.mind
+#                                   ^ source.mind punctuation.brackets.round.mind
+#                                    ^ source.mind punctuation.terminator.statement.mind
+>
+>    // Update
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^ source.mind comment.line.double-slash.mind
+>    let w1_new = w1 - lr * grad_w1;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let w2_new = w2 - lr * grad_w2;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let w3_new = w3 - lr * grad_w3;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^^^^ source.mind
+#                    ^ source.mind keyword.operator.arithmetic.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>
+>    return EdgeParams { w1: w1_new, w2: w2_new, w3: w3_new };
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^^^^ source.mind entity.name.type.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^ source.mind
+#                                      ^ source.mind punctuation.separator.colon.mind
+#                                       ^^^^^^^ source.mind
+#                                              ^ source.mind punctuation.separator.comma.mind
+#                                               ^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^^^^^^^^ source.mind
+#                                                           ^ source.mind punctuation.brackets.curly.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Example Usage
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn main() {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^ source.mind entity.name.function.mind
+#       ^ source.mind punctuation.brackets.round.mind
+#        ^ source.mind punctuation.brackets.round.mind
+#         ^ source.mind
+#          ^ source.mind punctuation.brackets.curly.mind
+>    // Initialize weights (Xavier initialization in practice)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // NOTE: random_normal is from MIND standard library (tensor module)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // Signature: fn random_normal(shape: [i32], stddev: f32) -> tensor<f32[...]>
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // Alternative: Use explicit initialization or import from tensor::random_normal
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let w1: tensor<f32[10, 16]> = random_normal([10, 16], 0.3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind storage.type.tensor.mind
+#                  ^ source.mind keyword.operator.comparison.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.brackets.square.mind
+#                       ^^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^ source.mind
+#                           ^^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^ source.mind keyword.operator.comparison.mind
+#                               ^ source.mind
+#                                ^ source.mind keyword.operator.assignment.mind
+#                                 ^ source.mind
+#                                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+#                                                ^ source.mind punctuation.brackets.square.mind
+#                                                 ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                    ^ source.mind
+#                                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.square.mind
+#                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                         ^ source.mind
+#                                                          ^^^ source.mind constant.numeric.float.mind
+#                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                              ^ source.mind punctuation.terminator.statement.mind
+>    let w2: tensor<f32[16, 8]> = random_normal([16, 8], 0.4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind storage.type.tensor.mind
+#                  ^ source.mind keyword.operator.comparison.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.brackets.square.mind
+#                       ^^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^ source.mind
+#                           ^ source.mind constant.numeric.integer.decimal.mind
+#                            ^ source.mind punctuation.brackets.square.mind
+#                             ^ source.mind keyword.operator.comparison.mind
+#                              ^ source.mind
+#                               ^ source.mind keyword.operator.assignment.mind
+#                                ^ source.mind
+#                                 ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind punctuation.brackets.square.mind
+#                                                ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind constant.numeric.integer.decimal.mind
+#                                                     ^ source.mind punctuation.brackets.square.mind
+#                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                       ^ source.mind
+#                                                        ^^^ source.mind constant.numeric.float.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>    let w3: tensor<f32[8, 1]> = random_normal([8, 1], 0.5);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind storage.type.tensor.mind
+#                  ^ source.mind keyword.operator.comparison.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.brackets.square.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.brackets.square.mind
+#                            ^ source.mind keyword.operator.comparison.mind
+#                             ^ source.mind
+#                              ^ source.mind keyword.operator.assignment.mind
+#                               ^ source.mind
+#                                ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                             ^ source.mind punctuation.brackets.round.mind
+#                                              ^ source.mind punctuation.brackets.square.mind
+#                                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                                   ^ source.mind punctuation.brackets.square.mind
+#                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                     ^ source.mind
+#                                                      ^^^ source.mind constant.numeric.float.mind
+#                                                         ^ source.mind punctuation.brackets.round.mind
+#                                                          ^ source.mind punctuation.terminator.statement.mind
+>
+>    // Example input (10 features)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let x: tensor<f32[10]> = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^^^^ source.mind storage.type.tensor.mind
+#                 ^ source.mind keyword.operator.comparison.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind punctuation.brackets.square.mind
+#                      ^^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.brackets.square.mind
+#                         ^ source.mind keyword.operator.comparison.mind
+#                          ^ source.mind
+#                           ^ source.mind keyword.operator.assignment.mind
+#                            ^ source.mind
+#                             ^ source.mind punctuation.brackets.square.mind
+#                              ^^^ source.mind constant.numeric.float.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^ source.mind
+#                                   ^^^ source.mind constant.numeric.float.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^ source.mind
+#                                        ^^^ source.mind constant.numeric.float.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind constant.numeric.float.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^^^ source.mind constant.numeric.float.mind
+#                                                     ^ source.mind punctuation.separator.comma.mind
+#                                                      ^ source.mind
+#                                                       ^^^ source.mind constant.numeric.float.mind
+#                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                           ^ source.mind
+#                                                            ^^^ source.mind constant.numeric.float.mind
+#                                                               ^ source.mind punctuation.separator.comma.mind
+#                                                                ^ source.mind
+#                                                                 ^^^ source.mind constant.numeric.float.mind
+#                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                     ^ source.mind
+#                                                                      ^^^ source.mind constant.numeric.float.mind
+#                                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                                          ^ source.mind
+#                                                                           ^^^ source.mind constant.numeric.float.mind
+#                                                                              ^ source.mind punctuation.brackets.square.mind
+#                                                                               ^ source.mind punctuation.terminator.statement.mind
+>
+>    // Inference
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let prob = predict(x, w1, w2, w3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^ source.mind variable.other.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.assignment.mind
+#              ^ source.mind
+#               ^^^^^^^ source.mind entity.name.function.call.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^^^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^^ source.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^ source.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    let decision = if prob > 0.5 {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^ source.mind
+#                   ^^ source.mind keyword.control.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.comparison.mind
+#                            ^ source.mind
+#                             ^^^ source.mind constant.numeric.float.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>        1
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        0
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>
+>    print("Probability:", prob);
+#^^^^ source.mind
+#    ^^^^^ source.mind support.function.builtin.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#           ^^^^^^^^^^^^ source.mind string.quoted.double.mind
+#                       ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^^^^^ source.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^ source.mind punctuation.terminator.statement.mind
+>    print("Binary decision:", decision);
+#^^^^ source.mind
+#    ^^^^^ source.mind support.function.builtin.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#           ^^^^^^^^^^^^^^^^ source.mind string.quoted.double.mind
+#                           ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^^^^^^^^ source.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>
+>    // Quantize for deployment
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let w1_quantized = quantize_weights(w1, 0.01);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^ source.mind variable.other.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^ source.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^ source.mind
+#                                            ^^^^ source.mind constant.numeric.float.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind punctuation.terminator.statement.mind
+>    let w2_quantized = quantize_weights(w2, 0.01);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^ source.mind variable.other.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^ source.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^ source.mind
+#                                            ^^^^ source.mind constant.numeric.float.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind punctuation.terminator.statement.mind
+>    let w3_quantized = quantize_weights(w3, 0.01);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^ source.mind variable.other.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^ source.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^ source.mind
+#                                            ^^^^ source.mind constant.numeric.float.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind punctuation.terminator.statement.mind
+>
+>    let prob_quantized = predict_quantized(x, w1_quantized, w2_quantized, w3_quantized, 0.01, 0.01, 0.01);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind variable.other.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^ source.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^^^^^^^^^^ source.mind
+#                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                           ^^^^^^^^^^^^^ source.mind
+#                                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                                         ^^^^^^^^^^^^^ source.mind
+#                                                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                                                       ^ source.mind
+#                                                                                        ^^^^ source.mind constant.numeric.float.mind
+#                                                                                            ^ source.mind punctuation.separator.comma.mind
+#                                                                                             ^ source.mind
+#                                                                                              ^^^^ source.mind constant.numeric.float.mind
+#                                                                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                                                                   ^ source.mind
+#                                                                                                    ^^^^ source.mind constant.numeric.float.mind
+#                                                                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                                                                         ^ source.mind punctuation.terminator.statement.mind
+>    print("Quantized probability:", prob_quantized);
+#^^^^ source.mind
+#    ^^^^^ source.mind support.function.builtin.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#           ^^^^^^^^^^^^^^^^^^^^^^ source.mind string.quoted.double.mind
+#                                 ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^^^^^^^^^^^^ source.mind
+#                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                   ^ source.mind punctuation.terminator.statement.mind
+>    print("Quantization error:", abs(prob - prob_quantized));
+#^^^^ source.mind
+#    ^^^^^ source.mind support.function.builtin.mind
+#         ^ source.mind punctuation.brackets.round.mind
+#          ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#           ^^^^^^^^^^^^^^^^^^^ source.mind string.quoted.double.mind
+#                              ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^ source.mind
+#                                 ^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^^^ source.mind
+#                                          ^ source.mind keyword.operator.arithmetic.mind
+#                                           ^^^^^^^^^^^^^^^ source.mind
+#                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Deployment Notes
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ============================================================================
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// For actual edge deployment:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 1. Train in f32 with this architecture
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 2. Export weights to int8 with calibration
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 3. Compile with --target=arm-cortex-m4 --optimize=size
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 4. Link with minimal runtime (no_std, embedded-hal)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 5. Flash to device with total <200 KB binary
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Tested platforms:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// - ARM Cortex-M4F (STM32F4): 96 KB binary
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// - RISC-V RV32I (GD32VF103): 84 KB binary
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// - ESP32 (Xtensa LX6): 112 KB binary
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>

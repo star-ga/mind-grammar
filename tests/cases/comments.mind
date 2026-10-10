@@ -1,0 +1,23 @@
+// SYNTAX TEST "source.mind" "comments"
+
+/// Doc comment on the next item.
+// <--- comment.line.documentation.mind punctuation.definition.comment.mind
+//  ^^^^^^^^^^^ comment.line.documentation.mind
+
+//// Four slashes is a plain line comment, not a doc comment.
+// <---- comment.line.double-slash.mind
+//   ^^^^ - comment.line.documentation.mind
+
+    let x: i64 = 1; // trailing comment
+//                  ^^^^^^^^^^^^^^^^^^^ comment.line.double-slash.mind
+//               ^ constant.numeric.integer.decimal.mind - comment
+
+    let s = "// not a comment";
+//          ^^^^^^^^^^^^^^^^^^ string.quoted.double.mind - comment
+
+/* block comment /* nested */ still a comment */
+// <-- comment.block.mind punctuation.definition.comment.begin.mind
+//                ^^^^^^^^^^^ comment.block.mind comment.block.mind
+//                            ^^^^^^^^^^^^^^^^^^^ comment.block.mind
+    fn after_block() -> i64 { 0 }
+//  ^^ storage.type.function.mind - comment

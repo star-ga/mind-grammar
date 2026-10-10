@@ -1,0 +1,63 @@
+// SYNTAX TEST "source.mind" "control flow, value-if, match, loops"
+
+    let new_cap: i64 = if old_cap == 0 {
+//                     ^^ keyword.control.mind
+//                                ^^ keyword.operator.comparison.mind
+        8
+    } else {
+//    ^^^^ keyword.control.mind
+        old_cap * 2
+    };
+
+    let name = match c {
+//             ^^^^^ keyword.control.mind
+        0x00u8 => "nul",
+//             ^^ keyword.operator.arrow.mind
+        Currency::Usd => "usd",
+//      ^^^^^^^^ entity.name.type.mind
+//              ^^ punctuation.separator.namespace.mind
+        _ => "other",
+    };
+
+    for i in 0..n {
+//  ^^^ keyword.control.mind
+//        ^^ keyword.control.mind
+        if i % 2 == 0 { continue; }
+//                      ^^^^^^^^ keyword.control.mind
+    }
+
+    while i < 4 {
+//  ^^^^^ keyword.control.mind
+        i += 1;
+//        ^^ keyword.operator.assignment.compound.mind
+    }
+
+    loop {
+//  ^^^^ keyword.control.mind
+        break;
+//      ^^^^^ keyword.control.mind
+    }
+
+    region {
+//  ^^^^^^ keyword.other.mind
+        let tmp = __mind_alloc(64);
+//                ^^^^^^^^^^^^ support.function.intrinsic.mind
+    }
+
+    let region = 3;
+//      ^^^^^^ variable.other.mind - keyword.other.mind
+
+    fn checked(x: i64) -> Result<i64, i64> {
+        let v = parse(x)?;
+//                      ^ keyword.operator.try.mind
+        assert(v > 0);
+//      ^^^^^^ keyword.other.mind
+        print("value:", v);
+//      ^^^^^ support.function.builtin.mind
+        return Ok(v as i64);
+//      ^^^^^^ keyword.control.mind
+//                  ^^ keyword.other.as.mind
+    }
+
+    let g = grad(loss, wrt = [w]);
+//          ^^^^ support.function.builtin.mind

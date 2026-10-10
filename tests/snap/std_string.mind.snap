@@ -1,0 +1,2032 @@
+>// std/string.mind — RFC 0005 Phase 2: pure-MIND String.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// String is a Vec<u8>-shaped byte buffer with a documented UTF-8
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// well-formedness invariant.  Construction via `string_from_bytes`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// returns the byte length on success and a negative sentinel on
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// invalid UTF-8 (see `string_validate_utf8`); construction via
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// `string_push_byte` accepts pre-validated bytes from a caller that
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// already knows it has a complete codepoint in hand.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Layout: identical to std.vec — `addr: i64, len: i64, cap: i64`.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// The struct is named `String` so the type-checker side-table
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// distinguishes string-typed parameters from generic Vec ones; the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// underlying memory contract is the same as Vec<u8>.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Determinism: the byte-level surface mirrors mind-nerve's Tier-3
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// multilingual floor — every UTF-8 input round-trips byte-for-byte,
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// no Unicode normalisation happens at this layer.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>struct String {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^^^^ source.mind entity.name.type.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>    addr: i64,
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.separator.colon.mind
+#         ^ source.mind
+#          ^^^ source.mind storage.type.primitive.mind
+#             ^ source.mind punctuation.separator.comma.mind
+>    len: i64,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind storage.type.primitive.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>    cap: i64,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind storage.type.primitive.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_new — empty String, zero allocation.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_new() -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.arrow.mind
+#                      ^ source.mind
+#                       ^^^^^^ source.mind support.type.prelude.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.curly.mind
+>    String { addr: 0, len: 0, cap: 0 }
+#^^^^ source.mind
+#    ^^^^^^ source.mind support.type.prelude.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.separator.comma.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^ source.mind constant.numeric.integer.decimal.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^^^ source.mind
+#                                 ^ source.mind punctuation.separator.colon.mind
+#                                  ^ source.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_len — current byte length (NOT codepoint count).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_len(s: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^^^^ source.mind support.type.prelude.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    s.len
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_cap — backing-store capacity in bytes.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_cap(s: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^^^^ source.mind support.type.prelude.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    s.cap
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_addr — opaque i64 base address.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_addr(s: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^^^^ source.mind support.type.prelude.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind
+#                              ^^ source.mind keyword.operator.arrow.mind
+#                                ^ source.mind
+#                                 ^^^ source.mind storage.type.primitive.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>    s.addr
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_get_byte — single byte read via __mind_load_i8 (task #306).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Bytes are stored one-per-offset by __mind_store_i8; the matching
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// single-byte load reads exactly byte[i] and never touches the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// neighbouring bytes i+1..i+7. This retires the up-to-7-byte
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// out-of-bounds read the previous packed `__mind_load_i64(addr+i) & 255`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// form performed at a buffer's final offset (only the malloc pad masked
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// it). The result is zero-extended to i64, so callers that relied on the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// masked form observe the identical byte value. Bounds-checks remain the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// caller's responsibility at this layer (std.option will wrap them once
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// enum payloads are wired).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_get_byte(s: String, i: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^^^^ source.mind support.type.prelude.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^^^ source.mind storage.type.primitive.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind
+#                                          ^^ source.mind keyword.operator.arrow.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind
+#                                                 ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i8(s.addr + i)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind keyword.operator.arithmetic.mind
+#                           ^^ source.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_validate_utf8 — minimal UTF-8 well-formedness pass over a
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// byte sequence.  Returns 0 if every byte sequence is a complete
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// codepoint, a negative sentinel otherwise.  Today this is the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 1-byte ASCII fast-path; multi-byte validation lands once `loop`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// codegen ships (deferred Step 2 work, the existing parse path is
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// what the compile-speed-moat bench gate measures).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_validate_utf8(s: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^ source.mind
+#                               ^^^^^^ source.mind support.type.prelude.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind
+#                                       ^^ source.mind keyword.operator.arrow.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind storage.type.primitive.mind
+#                                             ^ source.mind
+#                                              ^ source.mind punctuation.brackets.curly.mind
+>    if s.len == 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^ source.mind
+#        ^ source.mind punctuation.accessor.mind
+#         ^^^^ source.mind
+#             ^^ source.mind keyword.operator.comparison.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>        0
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        0
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_push_byte — append a single pre-validated byte.  Same
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// non-mutating semantics as `vec_push` (allocates a new backing
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// store on growth, copies via per-byte load/store).  Growth: cap 0
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// → 16, otherwise doubles.  The 16-byte minimum amortises the small-
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// string case while keeping the allocation trace deterministic.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_push_byte(s: String, b: i64) -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^^^^^^ source.mind support.type.prelude.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind
+#                                           ^^ source.mind keyword.operator.arrow.mind
+#                                             ^ source.mind
+#                                              ^^^^^^ source.mind support.type.prelude.mind
+#                                                    ^ source.mind
+#                                                     ^ source.mind punctuation.brackets.curly.mind
+>    let new_len: i64 = s.len + 1;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind keyword.operator.arithmetic.mind
+#                              ^ source.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>    let new_cap: i64 = if s.cap == 0 {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.control.mind
+#                         ^^ source.mind
+#                           ^ source.mind punctuation.accessor.mind
+#                            ^^^^ source.mind
+#                                ^^ source.mind keyword.operator.comparison.mind
+#                                  ^ source.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>        16
+#^^^^^^^^ source.mind
+#        ^^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        if s.len < s.cap {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^ source.mind
+#            ^ source.mind punctuation.accessor.mind
+#             ^^^^ source.mind
+#                 ^ source.mind keyword.operator.comparison.mind
+#                  ^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>            s.cap
+#^^^^^^^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+>        } else {
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind
+#          ^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>            s.cap * 2
+#^^^^^^^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    // Grow-and-preserve: __mind_realloc(NULL, size) === malloc(size)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // on the cap-0 path, and copies existing bytes on the doubling path.
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // The plain __mind_alloc this used to call lost the old bytes; that
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // worked while strings stayed ≤16 bytes but silently corrupted any
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // longer push sequence.  Fixed alongside the vec_push twin.
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    let new_addr: i64 = if new_cap == s.cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.control.mind
+#                          ^^^^^^^^^ source.mind
+#                                   ^^ source.mind keyword.operator.comparison.mind
+#                                     ^^ source.mind
+#                                       ^ source.mind punctuation.accessor.mind
+#                                        ^^^^ source.mind
+#                                            ^ source.mind punctuation.brackets.curly.mind
+>        s.addr
+#^^^^^^^^^ source.mind
+#         ^ source.mind punctuation.accessor.mind
+#          ^^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        __mind_realloc(s.addr, new_cap)
+#^^^^^^^^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind punctuation.separator.comma.mind
+#                              ^^^^^^^^ source.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(new_addr + s.len, b);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^^^ source.mind
+#                             ^ source.mind keyword.operator.arithmetic.mind
+#                              ^^ source.mind
+#                                ^ source.mind punctuation.accessor.mind
+#                                 ^^^ source.mind
+#                                    ^ source.mind punctuation.separator.comma.mind
+#                                     ^^ source.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    String { addr: new_addr, len: new_len, cap: new_cap }
+#^^^^ source.mind
+#    ^^^^^^ source.mind support.type.prelude.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^^^^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^ source.mind
+#                                ^ source.mind punctuation.separator.colon.mind
+#                                 ^^^^^^^^ source.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind punctuation.separator.colon.mind
+#                                               ^^^^^^^^^ source.mind
+#                                                        ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_eq — byte-by-byte equality.  Returns 1 iff lengths match
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// and every byte at every offset matches; 0 otherwise.  At this
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// layer the comparison is byte-equality, not Unicode-normalised
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// equality — consistent with the Tier-3 floor's "every input
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// round-trips" contract.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_eq(a: String, b: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^^^^ source.mind support.type.prelude.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^ source.mind
+#                               ^^^^^^ source.mind support.type.prelude.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind
+#                                       ^^ source.mind keyword.operator.arrow.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind storage.type.primitive.mind
+#                                             ^ source.mind
+#                                              ^ source.mind punctuation.brackets.curly.mind
+>    // Length first, then a real byte-by-byte compare via the masked
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // string_get_byte. The previous body returned 1 on equal length
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // regardless of contents — a stub that made every std.cli flag
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // query (args_has_flag, args_subcommand_eq, equals-form lookup)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // a length-only check, so "--foo" matched "--bar" and
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // args_subcommand_eq(a, "build") matched any 5-byte argv slot.
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    if a.len != b.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^ source.mind
+#        ^ source.mind punctuation.accessor.mind
+#         ^^^^ source.mind
+#             ^^ source.mind keyword.operator.comparison.mind
+#               ^^ source.mind
+#                 ^ source.mind punctuation.accessor.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i < a.len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^ source.mind
+#               ^ source.mind punctuation.accessor.mind
+#                ^^^^ source.mind
+#                    ^ source.mind punctuation.brackets.curly.mind
+>        if string_get_byte(a, i) != string_get_byte(b, i) {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.separator.comma.mind
+#                             ^^ source.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^^ source.mind keyword.operator.comparison.mind
+#                                   ^ source.mind
+#                                    ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                   ^ source.mind punctuation.brackets.round.mind
+#                                                    ^ source.mind
+#                                                     ^ source.mind punctuation.separator.comma.mind
+#                                                      ^^ source.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^ source.mind
+#                                                          ^ source.mind punctuation.brackets.curly.mind
+>            return 0;
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    return 1;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_starts_with — does `haystack` begin with `needle` (byte
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// equality, no Unicode normalisation)?  Returns 1 if so, 0 otherwise.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// An empty `needle` is a prefix of every String (returns 1); a needle
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// longer than haystack always returns 0.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_starts_with(haystack: String, needle: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^^^^^^^^ source.mind
+#                                  ^ source.mind punctuation.separator.colon.mind
+#                                   ^ source.mind
+#                                    ^^^^^^ source.mind support.type.prelude.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^^^^^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^ source.mind
+#                                                    ^^^^^^ source.mind support.type.prelude.mind
+#                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                           ^ source.mind
+#                                                            ^^ source.mind keyword.operator.arrow.mind
+#                                                              ^ source.mind
+#                                                               ^^^ source.mind storage.type.primitive.mind
+#                                                                  ^ source.mind
+#                                                                   ^ source.mind punctuation.brackets.curly.mind
+>    if needle.len > haystack.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^ source.mind keyword.operator.comparison.mind
+#                   ^^^^^^^^^ source.mind
+#                            ^ source.mind punctuation.accessor.mind
+#                             ^^^^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i < needle.len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^^^^^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>        let h: i64 = string_get_byte(haystack, i);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^^^^^^ source.mind
+#                                             ^ source.mind punctuation.separator.comma.mind
+#                                              ^^ source.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind punctuation.terminator.statement.mind
+>        let n: i64 = string_get_byte(needle, i);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^^^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^^ source.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind punctuation.terminator.statement.mind
+>        if h != n {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^ source.mind
+#             ^^ source.mind keyword.operator.comparison.mind
+#               ^^^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>            return 0;
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    return 1;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_contains — does `haystack` contain `needle` as a byte-substring?
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns 1 if so, 0 otherwise. An empty `needle` matches every String
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// (returns 1); a needle longer than haystack always returns 0.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_contains(haystack: String, needle: String) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^^^^^^^^ source.mind
+#                               ^ source.mind punctuation.separator.colon.mind
+#                                ^ source.mind
+#                                 ^^^^^^ source.mind support.type.prelude.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^^^^^^^ source.mind
+#                                               ^ source.mind punctuation.separator.colon.mind
+#                                                ^ source.mind
+#                                                 ^^^^^^ source.mind support.type.prelude.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind
+#                                                         ^^ source.mind keyword.operator.arrow.mind
+#                                                           ^ source.mind
+#                                                            ^^^ source.mind storage.type.primitive.mind
+#                                                               ^ source.mind
+#                                                                ^ source.mind punctuation.brackets.curly.mind
+>    if needle.len <= 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^^ source.mind keyword.operator.comparison.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind
+#                       ^ source.mind punctuation.brackets.curly.mind
+>        return 1;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    if needle.len > haystack.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^ source.mind keyword.operator.comparison.mind
+#                   ^^^^^^^^^ source.mind
+#                            ^ source.mind punctuation.accessor.mind
+#                             ^^^^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut i: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while i + needle.len <= haystack.len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.arithmetic.mind
+#             ^^^^^^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^ source.mind
+#                         ^^ source.mind keyword.operator.comparison.mind
+#                           ^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.accessor.mind
+#                                     ^^^^ source.mind
+#                                         ^ source.mind punctuation.brackets.curly.mind
+>        let mut j: i64 = 0;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.terminator.statement.mind
+>        let mut matched: i64 = 1;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^^^^^^^ source.mind variable.other.mind
+#                       ^ source.mind punctuation.separator.colon.mind
+#                        ^ source.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind
+#                             ^ source.mind keyword.operator.assignment.mind
+#                              ^ source.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        while j < needle.len {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^ source.mind
+#                ^ source.mind keyword.operator.comparison.mind
+#                 ^^^^^^^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind punctuation.brackets.curly.mind
+>            if string_get_byte(haystack, i + j) != string_get_byte(needle, j) {
+#^^^^^^^^^^^^ source.mind
+#            ^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^^^^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^^^ source.mind
+#                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                            ^^ source.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind
+#                                                ^^ source.mind keyword.operator.comparison.mind
+#                                                  ^ source.mind
+#                                                   ^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                   ^^^^^^ source.mind
+#                                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                                          ^^ source.mind
+#                                                                            ^ source.mind punctuation.brackets.round.mind
+#                                                                             ^ source.mind
+#                                                                              ^ source.mind punctuation.brackets.curly.mind
+>                matched = 0;
+#^^^^^^^^^^^^^^^^^^^^^^^^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^ source.mind
+#                          ^ source.mind constant.numeric.integer.decimal.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>                j = needle.len;
+#^^^^^^^^^^^^^^^^^^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^^^^^^^ source.mind
+#                          ^ source.mind punctuation.accessor.mind
+#                           ^^^ source.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>            } else {
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+#             ^ source.mind
+#              ^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.curly.mind
+>                j = j + 1;
+#^^^^^^^^^^^^^^^^^^ source.mind
+#                  ^ source.mind keyword.operator.assignment.mind
+#                   ^^^ source.mind
+#                      ^ source.mind keyword.operator.arithmetic.mind
+#                       ^ source.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.terminator.statement.mind
+>            }
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind punctuation.brackets.curly.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        if matched == 1 {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^^^^^^^^ source.mind
+#                   ^^ source.mind keyword.operator.comparison.mind
+#                     ^ source.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>            return 1;
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^ source.mind keyword.control.mind
+#                  ^ source.mind
+#                   ^ source.mind constant.numeric.integer.decimal.mind
+#                    ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        i = i + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    return 0;
+#^^^^ source.mind
+#    ^^^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_slice — byte-indexed zero-copy view of the range [start, end).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Clamps `start < 0` to 0 and `end > len` to len; an empty or reversed range
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// (end <= start), or a start at/after the end, returns an empty String. cap=0
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// so a later push against the slice allocates a fresh buffer instead of
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// clobbering the parent's backing store (see string_slice_from's note).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_slice(s: String, start: i64, end: i64) -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.separator.colon.mind
+#                      ^ source.mind
+#                       ^^^^^^ source.mind support.type.prelude.mind
+#                             ^ source.mind punctuation.separator.comma.mind
+#                              ^^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind punctuation.separator.colon.mind
+#                                               ^ source.mind
+#                                                ^^^ source.mind storage.type.primitive.mind
+#                                                   ^ source.mind punctuation.brackets.round.mind
+#                                                    ^ source.mind
+#                                                     ^^ source.mind keyword.operator.arrow.mind
+#                                                       ^ source.mind
+#                                                        ^^^^^^ source.mind support.type.prelude.mind
+#                                                              ^ source.mind
+#                                                               ^ source.mind punctuation.brackets.curly.mind
+>    let mut a: i64 = start;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^^^^^^ source.mind
+#                          ^ source.mind punctuation.terminator.statement.mind
+>    let mut b: i64 = end;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^^^^ source.mind
+#                        ^ source.mind punctuation.terminator.statement.mind
+>    if a < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind punctuation.brackets.curly.mind
+>        a = 0;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    if b > s.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^^ source.mind
+#            ^ source.mind punctuation.accessor.mind
+#             ^^^^ source.mind
+#                 ^ source.mind punctuation.brackets.curly.mind
+>        b = s.len;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^ source.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    if b <= a {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^^ source.mind keyword.operator.comparison.mind
+#           ^^^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return string_new();
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    if a >= s.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^^ source.mind keyword.operator.comparison.mind
+#           ^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>        return string_new();
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    String { addr: s.addr + a, len: b - a, cap: 0 }
+#^^^^ source.mind
+#    ^^^^^^ source.mind support.type.prelude.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind keyword.operator.arithmetic.mind
+#                           ^^ source.mind
+#                             ^ source.mind punctuation.separator.comma.mind
+#                              ^^^^ source.mind
+#                                  ^ source.mind punctuation.separator.colon.mind
+#                                   ^^^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^ source.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind punctuation.separator.colon.mind
+#                                               ^ source.mind
+#                                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_slice_from — substring view starting at byte index `start`.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a String that shares the underlying buffer (zero-copy view)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// with cap=0 so any subsequent push_byte / push_str / push_i64 against
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// the result allocates a fresh buffer instead of writing into the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// shared region.  `start` clamps: `start >= len` returns an empty
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// String, `start < 0` returns the input unchanged.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_slice_from(s: String, start: i64) -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^^^^^^ source.mind support.type.prelude.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^^^ source.mind
+#                                         ^ source.mind punctuation.separator.colon.mind
+#                                          ^ source.mind
+#                                           ^^^ source.mind storage.type.primitive.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind
+#                                                ^^ source.mind keyword.operator.arrow.mind
+#                                                  ^ source.mind
+#                                                   ^^^^^^ source.mind support.type.prelude.mind
+#                                                         ^ source.mind
+#                                                          ^ source.mind punctuation.brackets.curly.mind
+>    if start >= s.len {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^^ source.mind keyword.operator.comparison.mind
+#               ^^ source.mind
+#                 ^ source.mind punctuation.accessor.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+>        return string_new();
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    if start < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^^^^ source.mind
+#             ^ source.mind keyword.operator.comparison.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.brackets.curly.mind
+>        // Clamp negative start to 0 — return a cap=0 VIEW of the whole string,
+#^^^^^^^^ source.mind
+#        ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>        // never the input unchanged. Returning `s` would carry its original
+#^^^^^^^^ source.mind
+#        ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>        // cap, so a later push against the slice would believe it owns the
+#^^^^^^^^ source.mind
+#        ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>        // backing store and clobber `s`. cap=0 forces a fresh alloc on push.
+#^^^^^^^^ source.mind
+#        ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>        return String { addr: s.addr, len: s.len, cap: 0 };
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^ source.mind support.type.prelude.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+#                       ^^^^^ source.mind
+#                            ^ source.mind punctuation.separator.colon.mind
+#                             ^^ source.mind
+#                               ^ source.mind punctuation.accessor.mind
+#                                ^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.comma.mind
+#                                     ^^^^ source.mind
+#                                         ^ source.mind punctuation.separator.colon.mind
+#                                          ^^ source.mind
+#                                            ^ source.mind punctuation.accessor.mind
+#                                             ^^^ source.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^ source.mind
+#                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                      ^ source.mind
+#                                                       ^ source.mind constant.numeric.integer.decimal.mind
+#                                                        ^ source.mind
+#                                                         ^ source.mind punctuation.brackets.curly.mind
+#                                                          ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    String { addr: s.addr + start, len: s.len - start, cap: 0 }
+#^^^^ source.mind
+#    ^^^^^^ source.mind support.type.prelude.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^^ source.mind
+#                          ^ source.mind keyword.operator.arithmetic.mind
+#                           ^^^^^^ source.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^ source.mind
+#                                      ^ source.mind punctuation.separator.colon.mind
+#                                       ^^ source.mind
+#                                         ^ source.mind punctuation.accessor.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind keyword.operator.arithmetic.mind
+#                                               ^^^^^^ source.mind
+#                                                     ^ source.mind punctuation.separator.comma.mind
+#                                                      ^^^^ source.mind
+#                                                          ^ source.mind punctuation.separator.colon.mind
+#                                                           ^ source.mind
+#                                                            ^ source.mind constant.numeric.integer.decimal.mind
+#                                                             ^ source.mind
+#                                                              ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_push_str — append every byte of `src` to `dst`, returning
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// the new String.  Grows-and-copies semantics: when the existing
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// capacity is insufficient, allocates a new buffer sized at the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// next power-of-two ≥ the required length, copies all existing
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// bytes of `dst` into it, then appends `src`'s bytes at the tail.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Note: the existing `string_push_byte` (above) does NOT copy
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// existing bytes on growth — a known limitation that holds while
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// strings stay ≤16 bytes.  `string_push_str` is written correctly
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// for arbitrary lengths so concatenation works for the agent-CLI
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// text-output paths that drive it (ANSI sequences, multi-arg
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// command-line strings, JSON payloads).  The fix-string_push_byte
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// follow-up tracks separately.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_push_str(dst: String, src: String) -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^^^^^^ source.mind support.type.prelude.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^^^^^^ source.mind support.type.prelude.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+#                                                ^ source.mind
+#                                                 ^^ source.mind keyword.operator.arrow.mind
+#                                                   ^ source.mind
+#                                                    ^^^^^^ source.mind support.type.prelude.mind
+#                                                          ^ source.mind
+#                                                           ^ source.mind punctuation.brackets.curly.mind
+>    let needed: i64 = dst.len + src.len;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind punctuation.accessor.mind
+#                          ^^^^ source.mind
+#                              ^ source.mind keyword.operator.arithmetic.mind
+#                               ^^^^ source.mind
+#                                   ^ source.mind punctuation.accessor.mind
+#                                    ^^^ source.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>    let new_cap: i64 = if needed <= dst.cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.control.mind
+#                         ^^^^^^^^ source.mind
+#                                 ^^ source.mind keyword.operator.comparison.mind
+#                                   ^^^^ source.mind
+#                                       ^ source.mind punctuation.accessor.mind
+#                                        ^^^^ source.mind
+#                                            ^ source.mind punctuation.brackets.curly.mind
+>        dst.cap
+#^^^^^^^^^^^ source.mind
+#           ^ source.mind punctuation.accessor.mind
+#            ^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        let mut c: i64 = if dst.cap == 0 {
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^^ source.mind keyword.control.mind
+#                           ^^^^ source.mind
+#                               ^ source.mind punctuation.accessor.mind
+#                                ^^^^ source.mind
+#                                    ^^ source.mind keyword.operator.comparison.mind
+#                                      ^ source.mind
+#                                       ^ source.mind constant.numeric.integer.decimal.mind
+#                                        ^ source.mind
+#                                         ^ source.mind punctuation.brackets.curly.mind
+>            16
+#^^^^^^^^^^^^ source.mind
+#            ^^ source.mind constant.numeric.integer.decimal.mind
+>        } else {
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind
+#          ^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>            dst.cap
+#^^^^^^^^^^^^^^^ source.mind
+#               ^ source.mind punctuation.accessor.mind
+#                ^^^^ source.mind
+>        };
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind punctuation.terminator.statement.mind
+>        while c < needed {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^ source.mind
+#                ^ source.mind keyword.operator.comparison.mind
+#                 ^^^^^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>            c = c * 2;
+#^^^^^^^^^^^^^^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+#                     ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        c
+#^^^^^^^^^^ source.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    let new_addr: i64 = if new_cap == dst.cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.control.mind
+#                          ^^^^^^^^^ source.mind
+#                                   ^^ source.mind keyword.operator.comparison.mind
+#                                     ^^^^ source.mind
+#                                         ^ source.mind punctuation.accessor.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind punctuation.brackets.curly.mind
+>        dst.addr
+#^^^^^^^^^^^ source.mind
+#           ^ source.mind punctuation.accessor.mind
+#            ^^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        let a: i64 = __mind_alloc(new_cap);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^^^^^^^ source.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind punctuation.terminator.statement.mind
+>        let mut i: i64 = 0;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.modifier.mut.mind
+#               ^ source.mind
+#                ^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.terminator.statement.mind
+>        while i < dst.len {
+#^^^^^^^^ source.mind
+#        ^^^^^ source.mind keyword.control.mind
+#             ^^^ source.mind
+#                ^ source.mind keyword.operator.comparison.mind
+#                 ^^^^ source.mind
+#                     ^ source.mind punctuation.accessor.mind
+#                      ^^^^ source.mind
+#                          ^ source.mind punctuation.brackets.curly.mind
+>            __mind_store_i8(a + i, __mind_load_i8(dst.addr + i));
+#^^^^^^^^^^^^ source.mind
+#            ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^^ source.mind
+#                              ^ source.mind keyword.operator.arithmetic.mind
+#                               ^^ source.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^ source.mind
+#                                   ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                                 ^ source.mind punctuation.brackets.round.mind
+#                                                  ^^^ source.mind
+#                                                     ^ source.mind punctuation.accessor.mind
+#                                                      ^^^^^ source.mind
+#                                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                                            ^^ source.mind
+#                                                              ^ source.mind punctuation.brackets.round.mind
+#                                                               ^ source.mind punctuation.brackets.round.mind
+#                                                                ^ source.mind punctuation.terminator.statement.mind
+>            i = i + 1;
+#^^^^^^^^^^^^^^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+#                     ^ source.mind punctuation.terminator.statement.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>        a
+#^^^^^^^^^^ source.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    let mut j: i64 = 0;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind punctuation.separator.colon.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind
+#                   ^ source.mind keyword.operator.assignment.mind
+#                    ^ source.mind
+#                     ^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    while j < src.len {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^ source.mind
+#            ^ source.mind keyword.operator.comparison.mind
+#             ^^^^ source.mind
+#                 ^ source.mind punctuation.accessor.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.curly.mind
+>        __mind_store_i8(new_addr + dst.len + j, __mind_load_i8(src.addr + j));
+#^^^^^^^^ source.mind
+#        ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^^^^^^^^^ source.mind
+#                                 ^ source.mind keyword.operator.arithmetic.mind
+#                                  ^^^^ source.mind
+#                                      ^ source.mind punctuation.accessor.mind
+#                                       ^^^^ source.mind
+#                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                            ^^ source.mind
+#                                              ^ source.mind punctuation.separator.comma.mind
+#                                               ^ source.mind
+#                                                ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                                              ^ source.mind punctuation.brackets.round.mind
+#                                                               ^^^ source.mind
+#                                                                  ^ source.mind punctuation.accessor.mind
+#                                                                   ^^^^^ source.mind
+#                                                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                                                         ^^ source.mind
+#                                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                                            ^ source.mind punctuation.brackets.round.mind
+#                                                                             ^ source.mind punctuation.terminator.statement.mind
+>        j = j + 1;
+#^^^^^^^^^^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^^^ source.mind
+#              ^ source.mind keyword.operator.arithmetic.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    String { addr: new_addr, len: needed, cap: new_cap }
+#^^^^ source.mind
+#    ^^^^^^ source.mind support.type.prelude.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+#            ^^^^^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^^^^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^ source.mind
+#                                ^ source.mind punctuation.separator.colon.mind
+#                                 ^^^^^^^ source.mind
+#                                        ^ source.mind punctuation.separator.comma.mind
+#                                         ^^^^ source.mind
+#                                             ^ source.mind punctuation.separator.colon.mind
+#                                              ^^^^^^^^^ source.mind
+#                                                       ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// string_push_i64 — append the decimal ASCII representation of `n`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// to `s`, returning the new String.  Most-significant-digit-first
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// emission: a power-of-10 divisor is established by repeated /10
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// then digits are extracted high-to-low so no temporary buffer or
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// reversal step is needed.  The 64-bit signed range emits as many as
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 20 bytes (e.g. -9223372036854775808 = `-` + 19 digits).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Edge cases:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - `n == 0`  emits the single byte `'0'`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - `n < 0`   emits `'-'` then |n|
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   - `i64::MIN` is documented as undefined: the `0 - n` negation
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//     overflows.  Callers needing the absolute extreme should mask
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//     it off at their layer; the agent-CLI text-output paths that
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//     drive this helper never hit that boundary.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn string_push_i64(s: String, n: i64) -> String {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^^^^ source.mind support.type.prelude.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^^^ source.mind storage.type.primitive.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind
+#                                          ^^ source.mind keyword.operator.arrow.mind
+#                                            ^ source.mind
+#                                             ^^^^^^ source.mind support.type.prelude.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind punctuation.brackets.curly.mind
+>    if n == 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return string_push_byte(s, 48);
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^ source.mind
+#                                   ^^ source.mind constant.numeric.integer.decimal.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut out: String = s;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^^^^ source.mind support.type.prelude.mind
+#                       ^ source.mind
+#                        ^ source.mind keyword.operator.assignment.mind
+#                         ^^ source.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    let mut nn: i64 = n;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.terminator.statement.mind
+>    if n < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind punctuation.brackets.curly.mind
+>        out = string_push_byte(out, 45);
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^ source.mind
+#              ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^^ source.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^ source.mind
+#                                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>        nn = 0 - n;
+#^^^^^^^^^^^ source.mind
+#           ^ source.mind keyword.operator.assignment.mind
+#            ^ source.mind
+#             ^ source.mind constant.numeric.integer.decimal.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.arithmetic.mind
+#                ^^ source.mind
+#                  ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let mut div: i64 = 1;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^ source.mind constant.numeric.integer.decimal.mind
+#                        ^ source.mind punctuation.terminator.statement.mind
+>    let mut tmp: i64 = nn;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind storage.modifier.mut.mind
+#           ^ source.mind
+#            ^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^^^ source.mind
+#                         ^ source.mind punctuation.terminator.statement.mind
+>    while tmp >= 10 {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^^^ source.mind
+#              ^^ source.mind keyword.operator.comparison.mind
+#                ^ source.mind
+#                 ^^ source.mind constant.numeric.integer.decimal.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.brackets.curly.mind
+>        div = div * 10;
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>        tmp = tmp / 10;
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    while div > 0 {
+#^^^^ source.mind
+#    ^^^^^ source.mind keyword.control.mind
+#         ^^^^^ source.mind
+#              ^ source.mind keyword.operator.comparison.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.brackets.curly.mind
+>        let digit: i64 = (nn / div) % 10;
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^^^^^ source.mind variable.other.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind
+#                       ^ source.mind keyword.operator.assignment.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^^^ source.mind
+#                             ^ source.mind keyword.operator.arithmetic.mind
+#                              ^^^^ source.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^ source.mind
+#                                      ^^ source.mind constant.numeric.integer.decimal.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>        out = string_push_byte(out, 48 + digit);
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^ source.mind
+#              ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^^ source.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^ source.mind
+#                                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind
+#                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                        ^^^^^^ source.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind punctuation.terminator.statement.mind
+>        div = div / 10;
+#^^^^^^^^^^^^ source.mind
+#            ^ source.mind keyword.operator.assignment.mind
+#             ^^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^^ source.mind constant.numeric.integer.decimal.mind
+#                      ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    out
+#^^^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>

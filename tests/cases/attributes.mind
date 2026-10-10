@@ -1,0 +1,32 @@
+// SYNTAX TEST "source.mind" "attributes"
+
+#[test]
+// <- meta.attribute.mind punctuation.definition.attribute.mind
+// <~- meta.attribute.mind punctuation.brackets.attribute.begin.mind
+//^^^^ meta.attribute.mind entity.other.attribute-name.mind
+//    ^ meta.attribute.mind punctuation.brackets.attribute.end.mind
+fn u8_direct_loop_reference() -> i64 {
+    let mut acc: i64 = 3;
+    #[collapse]
+//  ^^ meta.attribute.mind
+//    ^^^^^^^^ entity.other.attribute-name.mind
+    for i in 0..13 {
+        acc = acc * 7;
+    }
+    acc
+}
+
+#[repr(C)]
+//^^^^ entity.other.attribute-name.mind
+//    ^ punctuation.brackets.round.mind
+//     ^ meta.attribute.mind - entity.other.attribute-name.mind
+struct Header {
+    tag: u8,
+}
+
+#[reap_threshold(0.5)]
+//^^^^^^^^^^^^^^ entity.other.attribute-name.mind
+//               ^^^ meta.attribute.mind constant.numeric.float.mind
+
+    let row = [1, 2, 3];
+//            ^ punctuation.brackets.square.mind - meta.attribute.mind

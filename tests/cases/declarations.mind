@@ -1,0 +1,76 @@
+// SYNTAX TEST "source.mind" "declarations"
+
+    pub fn geo_pow(seed: i64, r: i64, n: i64) -> i64 {
+//  ^^^ storage.modifier.mind
+//      ^^ storage.type.function.mind
+//         ^^^^^^^ entity.name.function.mind
+//                     ^ punctuation.separator.colon.mind
+//                       ^^^ storage.type.primitive.mind
+//                                            ^^ keyword.operator.arrow.mind
+        let mut acc: i64 = seed;
+//      ^^^ storage.type.let.mind
+//          ^^^ storage.modifier.mut.mind
+//              ^^^ variable.other.mind
+        acc
+    }
+
+    struct Packet {
+//  ^^^^^^ storage.type.struct.mind
+//         ^^^^^^ entity.name.type.mind
+        pre: i64,
+        bytes: [u8; 4],
+//             ^ punctuation.brackets.square.mind
+//              ^^ storage.type.primitive.mind
+//                ^ punctuation.terminator.statement.mind
+//                  ^ constant.numeric.integer.decimal.mind
+    }
+
+    enum Currency {
+//  ^^^^ storage.type.enum.mind
+//       ^^^^^^^^ entity.name.type.mind
+        Usd,
+        Eur,
+    }
+
+    type Byte = u8;
+//  ^^^^ storage.type.type.mind
+//       ^^^^ entity.name.type.mind
+
+    const MAX_ITEMS: u64 = 120_000;
+//  ^^^^^ storage.type.const.mind
+//        ^^^^^^^^^ variable.other.constant.mind
+
+    trait Shape {
+//  ^^^^^ storage.type.trait.mind
+//        ^^^^^ entity.name.type.mind
+        fn area(self) -> i64;
+//              ^^^^ variable.language.self.mind
+    }
+
+    impl Shape for Square {
+//  ^^^^ storage.type.impl.mind
+//       ^^^^^ entity.name.type.mind
+//             ^^^ keyword.control.mind
+//                 ^^^^^^ entity.name.type.mind
+        fn area(self) -> i64 { self.side * self.side }
+    }
+
+    module governance {
+//  ^^^^^^ storage.type.module.mind
+//         ^^^^^^^^^^ entity.name.namespace.mind
+    }
+
+    extern "C" {
+//  ^^^^^^ storage.type.mind
+//         ^^^ string.quoted.double.mind
+        unsafe fn socket(domain: i32, type_: i32, protocol: i32) -> i32;
+//      ^^^^^^ storage.modifier.mind
+//                ^^^^^^ entity.name.function.mind
+//                                    ^^^^^ - storage.type
+        safe fn getpid() -> i32;
+//      ^^^^ storage.modifier.mind
+        unsafe fn bind(sockfd: i32, addr: *const u8, addrlen: i32) -> i32;
+//                                        ^ keyword.operator.arithmetic.mind
+//                                         ^^^^^ storage.type.mind
+//                                               ^^ storage.type.primitive.mind - variable.other.constant.mind
+    }

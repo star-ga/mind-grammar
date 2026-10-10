@@ -1,0 +1,38 @@
+// SYNTAX TEST "source.mind" "operators"
+
+    let y = x @ w .+ b;
+//            ^ keyword.operator.matmul.mind
+//                ^^ keyword.operator.elementwise.mind
+    let z = a .* b ./ c .- d;
+//            ^^ keyword.operator.elementwise.mind
+//                 ^^ keyword.operator.elementwise.mind
+//                      ^^ keyword.operator.elementwise.mind
+    let v = (r << 1) | carry;
+//             ^^ keyword.operator.bitwise.shift.mind
+//                   ^ keyword.operator.bitwise.mind
+    let u = h >> 3 ^ k & 0xFF;
+//            ^^ keyword.operator.bitwise.shift.mind
+//                 ^ keyword.operator.bitwise.mind
+//                     ^ keyword.operator.bitwise.mind
+    let ok = a && !b || c != d;
+//             ^^ keyword.operator.logical.mind
+//                ^ keyword.operator.logical.mind
+//                   ^^ keyword.operator.logical.mind
+//                        ^^ keyword.operator.comparison.mind
+    let q = a % b - c / d + e * f;
+//            ^ keyword.operator.arithmetic.mind
+//                ^ keyword.operator.arithmetic.mind
+//                    ^ keyword.operator.arithmetic.mind
+//                        ^ keyword.operator.arithmetic.mind
+//                            ^ keyword.operator.arithmetic.mind
+    mask <<= 2;
+//       ^^^ keyword.operator.assignment.compound.mind
+    acc ^= x;
+//      ^^ keyword.operator.assignment.compound.mind
+    let back = lo..-1;
+//               ^^ keyword.operator.range.mind
+//                 ^ keyword.operator.arithmetic.mind
+    unsafe fn printf(fmt: *const u8, ...) -> i32;
+//                                   ^^^ keyword.operator.variadic.mind
+    let total = vec_len(v) <= 16;
+//                         ^^ keyword.operator.comparison.mind

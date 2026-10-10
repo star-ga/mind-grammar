@@ -1,0 +1,638 @@
+>// std/vec.mind — RFC 0005 Phase 2: pure-MIND growable vector.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Vec is the foundation of std.string (Vec<u8> with UTF-8 invariant)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// and std.map (insertion-order vector alongside the bucket array).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Both depend on this file shipping cleanly.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// ABI is RFC 0005 Option C (heap record): a Vec value is the i64
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// base-address of a 3×i64 heap block laid out [addr | len | cap] at
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// 8-byte stride.  All seven RFC 0005 intrinsics are signed i64-only,
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// so the Vec struct never references a built-in pointer type.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Growth policy is fixed at "doubling, min-cap 4" so the allocation
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// trace is deterministic — load-bearing for evidence-chain
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// reproducibility and the bootstrap fixed point.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>struct Vec {
+#^^^^^^ source.mind storage.type.struct.mind
+#      ^ source.mind
+#       ^^^ source.mind entity.name.type.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>    addr: i64,
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.separator.colon.mind
+#         ^ source.mind
+#          ^^^ source.mind storage.type.primitive.mind
+#             ^ source.mind punctuation.separator.comma.mind
+>    len: i64,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind storage.type.primitive.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>    cap: i64,
+#^^^^^^^ source.mind
+#       ^ source.mind punctuation.separator.colon.mind
+#        ^ source.mind
+#         ^^^ source.mind storage.type.primitive.mind
+#            ^ source.mind punctuation.separator.comma.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_new — empty Vec, zero allocation.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_new() -> Vec {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^^ source.mind keyword.operator.arrow.mind
+#                   ^ source.mind
+#                    ^^^ source.mind entity.name.type.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>    Vec { addr: 0, len: 0, cap: 0 }
+#^^^^ source.mind
+#    ^^^ source.mind entity.name.type.mind
+#       ^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^^^^^ source.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^ source.mind constant.numeric.integer.decimal.mind
+#                 ^ source.mind punctuation.separator.comma.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^ source.mind constant.numeric.integer.decimal.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^^^^ source.mind
+#                              ^ source.mind punctuation.separator.colon.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_len — current logical length.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_len(v: Vec) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.operator.arrow.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.curly.mind
+>    v.len
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_cap — current backing-store capacity in elements.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_cap(v: Vec) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.operator.arrow.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind
+#                              ^ source.mind punctuation.brackets.curly.mind
+>    v.cap
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_addr — opaque i64 base address (RFC 0005 P0a — never a `ptr`).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_addr(v: Vec) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind entity.name.type.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.operator.arrow.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind
+#                               ^ source.mind punctuation.brackets.curly.mind
+>    v.addr
+#^^^^^ source.mind
+#     ^ source.mind punctuation.accessor.mind
+#      ^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_get — load element at logical index `i`.  No bounds-check at
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// this layer; std.option will wrap it once enum payloads are wired.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_get(v: Vec, i: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.separator.comma.mind
+#                      ^^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^^ source.mind keyword.operator.arrow.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind
+#                                      ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(v.addr + i * 8)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.accessor.mind
+#                      ^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^^^ source.mind
+#                               ^ source.mind keyword.operator.arithmetic.mind
+#                                ^ source.mind
+#                                 ^ source.mind constant.numeric.integer.decimal.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_set — store element at logical index `i`.  Same caveats as
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// vec_get.  Returns 0 on success (the intrinsic's contract).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_set(v: Vec, i: i64, value: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind entity.name.type.mind
+#                     ^ source.mind punctuation.separator.comma.mind
+#                      ^^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.separator.comma.mind
+#                              ^^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind
+#                                           ^^ source.mind keyword.operator.arrow.mind
+#                                             ^ source.mind
+#                                              ^^^ source.mind storage.type.primitive.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind punctuation.brackets.curly.mind
+>    __mind_store_i64(v.addr + i * 8, value)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.accessor.mind
+#                       ^^^^^ source.mind
+#                            ^ source.mind keyword.operator.arithmetic.mind
+#                             ^^^ source.mind
+#                                ^ source.mind keyword.operator.arithmetic.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^^^^^^ source.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_push — append `value`, growing the backing store if needed.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Today this is a *non-mutating* function: it allocates a new backing
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// store, copies the existing elements (open-coded by index since
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// std.io's __mind_memcpy isn't in the intrinsic set), writes the new
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// element, and returns a fresh Vec value.  Once cross-fn `&mut`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// mutation lands, this folds into the in-place push the RFC names.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Growth: cap 0 → 4, otherwise doubles.  The choice is documented and
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// fixed so the allocation trace is deterministic across runs.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Grow-and-preserve via __mind_realloc: realloc(NULL, n) === malloc(n)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// on the cap-0 path, and copies the existing elements on the doubling
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// path.  The plain __mind_alloc this used to call lost the old elements
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// when the doubling kicked in; for the 4-element-init Vec that happened
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// on the 5th push, silently corrupting every longer sequence.  Fixed
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// alongside the string_push_byte twin.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_push(v: Vec, value: i64) -> Vec {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind entity.name.type.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^^^^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind
+#                                    ^^ source.mind keyword.operator.arrow.mind
+#                                      ^ source.mind
+#                                       ^^^ source.mind entity.name.type.mind
+#                                          ^ source.mind
+#                                           ^ source.mind punctuation.brackets.curly.mind
+>    let new_len: i64 = v.len + 1;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind keyword.operator.arithmetic.mind
+#                              ^ source.mind
+#                               ^ source.mind constant.numeric.integer.decimal.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>    let new_cap: i64 = if v.cap == 0 {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^ source.mind variable.other.mind
+#               ^ source.mind punctuation.separator.colon.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind
+#                     ^ source.mind keyword.operator.assignment.mind
+#                      ^ source.mind
+#                       ^^ source.mind keyword.control.mind
+#                         ^^ source.mind
+#                           ^ source.mind punctuation.accessor.mind
+#                            ^^^^ source.mind
+#                                ^^ source.mind keyword.operator.comparison.mind
+#                                  ^ source.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>        4
+#^^^^^^^^ source.mind
+#        ^ source.mind constant.numeric.integer.decimal.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        if v.len < v.cap {
+#^^^^^^^^ source.mind
+#        ^^ source.mind keyword.control.mind
+#          ^^ source.mind
+#            ^ source.mind punctuation.accessor.mind
+#             ^^^^ source.mind
+#                 ^ source.mind keyword.operator.comparison.mind
+#                  ^^ source.mind
+#                    ^ source.mind punctuation.accessor.mind
+#                     ^^^^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>            v.cap
+#^^^^^^^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+>        } else {
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^ source.mind
+#          ^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind punctuation.brackets.curly.mind
+>            v.cap * 2
+#^^^^^^^^^^^^^ source.mind
+#             ^ source.mind punctuation.accessor.mind
+#              ^^^^ source.mind
+#                  ^ source.mind keyword.operator.arithmetic.mind
+#                   ^ source.mind
+#                    ^ source.mind constant.numeric.integer.decimal.mind
+>        }
+#^^^^^^^^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    let new_addr: i64 = if new_cap == v.cap {
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.control.mind
+#                          ^^^^^^^^^ source.mind
+#                                   ^^ source.mind keyword.operator.comparison.mind
+#                                     ^^ source.mind
+#                                       ^ source.mind punctuation.accessor.mind
+#                                        ^^^^ source.mind
+#                                            ^ source.mind punctuation.brackets.curly.mind
+>        v.addr
+#^^^^^^^^^ source.mind
+#         ^ source.mind punctuation.accessor.mind
+#          ^^^^^ source.mind
+>    } else {
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind
+#      ^^^^ source.mind keyword.control.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>        __mind_realloc(v.addr, new_cap * 8)
+#^^^^^^^^ source.mind
+#        ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.accessor.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind punctuation.separator.comma.mind
+#                              ^^^^^^^^^ source.mind
+#                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                        ^ source.mind
+#                                         ^ source.mind constant.numeric.integer.decimal.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+>    };
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+#     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(new_addr + v.len * 8, value);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^^^^ source.mind
+#                              ^ source.mind keyword.operator.arithmetic.mind
+#                               ^^ source.mind
+#                                 ^ source.mind punctuation.accessor.mind
+#                                  ^^^^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^ source.mind
+#                                        ^ source.mind constant.numeric.integer.decimal.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^^^ source.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind punctuation.terminator.statement.mind
+>    Vec { addr: new_addr, len: new_len, cap: new_cap }
+#^^^^ source.mind
+#    ^^^ source.mind entity.name.type.mind
+#       ^ source.mind
+#        ^ source.mind punctuation.brackets.curly.mind
+#         ^^^^^ source.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^^^^^^^^^ source.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^^^^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^^^^^^^^ source.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.colon.mind
+#                                            ^^^^^^^^^ source.mind
+#                                                     ^ source.mind punctuation.brackets.curly.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_zeroed — allocate a backing store of `n` zeroed i64 elements and
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// return its opaque i64 base address (RFC 0005 P0a — never a `ptr`).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// This is the zeroed-allocation primitive (issue #204): `__mind_alloc`
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// hands back uninitialised memory, so callers that need a zero-filled
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// scratch buffer (counting sorts, histograms, bitsets) previously had
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// to open-code the clearing loop.  The fill is a deterministic forward
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// pass of `__mind_store_i64`, so the allocation/store trace is identical
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// across runs and substrates (the cross-substrate wedge).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// `n <= 0` allocates nothing and returns 0 (the __mind_alloc contract),
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// matching the never-pushed Vec's addr-0 convention.  Read elements back
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// with `__mind_load_i64(base + i * 8)` or wrap the base in a Vec value.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_zeroed(n: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    __mind_vec_zeroed(n)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// vec_free — release the heap backing store via __mind_free.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// A Vec value is itself a 3×i64 struct (passed/returned by value); the
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// only heap allocation is the backing store at `v.addr` (allocated by
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// vec_push via __mind_realloc).  Freeing that address reclaims it; a
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// zero-cap (never-pushed) Vec has addr 0, and __mind_free(0) is a no-op
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// by the realloc/free contract.  Returns 0 (the intrinsic's contract).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn vec_free(v: Vec) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind entity.name.type.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^^ source.mind keyword.operator.arrow.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind
+#                               ^ source.mind punctuation.brackets.curly.mind
+>    __mind_free(v.addr)
+#^^^^ source.mind
+#    ^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.accessor.mind
+#                  ^^^^ source.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>

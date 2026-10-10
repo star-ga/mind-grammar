@@ -1,0 +1,26 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Corpus check against the MIND repository
+        run: |
+          git clone --depth 1 https://github.com/star-ga/mind.git "$RUNNER_TEMP/mind"
+          npm run test:corpus -- "$RUNNER_TEMP/mind/std" "$RUNNER_TEMP/mind/examples" "$RUNNER_TEMP/mind/tests"
+      - run: npm run package

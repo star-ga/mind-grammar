@@ -1,0 +1,304 @@
+// std/string.mind — RFC 0005 Phase 2: pure-MIND String.
+//
+// String is a Vec<u8>-shaped byte buffer with a documented UTF-8
+// well-formedness invariant.  Construction via `string_from_bytes`
+// returns the byte length on success and a negative sentinel on
+// invalid UTF-8 (see `string_validate_utf8`); construction via
+// `string_push_byte` accepts pre-validated bytes from a caller that
+// already knows it has a complete codepoint in hand.
+//
+// Layout: identical to std.vec — `addr: i64, len: i64, cap: i64`.
+// The struct is named `String` so the type-checker side-table
+// distinguishes string-typed parameters from generic Vec ones; the
+// underlying memory contract is the same as Vec<u8>.
+//
+// Determinism: the byte-level surface mirrors mind-nerve's Tier-3
+// multilingual floor — every UTF-8 input round-trips byte-for-byte,
+// no Unicode normalisation happens at this layer.
+
+struct String {
+    addr: i64,
+    len: i64,
+    cap: i64,
+}
+
+// string_new — empty String, zero allocation.
+pub fn string_new() -> String {
+    String { addr: 0, len: 0, cap: 0 }
+}
+
+// string_len — current byte length (NOT codepoint count).
+pub fn string_len(s: String) -> i64 {
+    s.len
+}
+
+// string_cap — backing-store capacity in bytes.
+pub fn string_cap(s: String) -> i64 {
+    s.cap
+}
+
+// string_addr — opaque i64 base address.
+pub fn string_addr(s: String) -> i64 {
+    s.addr
+}
+
+// string_get_byte — single byte read via __mind_load_i8 (task #306).
+// Bytes are stored one-per-offset by __mind_store_i8; the matching
+// single-byte load reads exactly byte[i] and never touches the
+// neighbouring bytes i+1..i+7. This retires the up-to-7-byte
+// out-of-bounds read the previous packed `__mind_load_i64(addr+i) & 255`
+// form performed at a buffer's final offset (only the malloc pad masked
+// it). The result is zero-extended to i64, so callers that relied on the
+// masked form observe the identical byte value. Bounds-checks remain the
+// caller's responsibility at this layer (std.option will wrap them once
+// enum payloads are wired).
+pub fn string_get_byte(s: String, i: i64) -> i64 {
+    __mind_load_i8(s.addr + i)
+}
+
+// string_validate_utf8 — minimal UTF-8 well-formedness pass over a
+// byte sequence.  Returns 0 if every byte sequence is a complete
+// codepoint, a negative sentinel otherwise.  Today this is the
+// 1-byte ASCII fast-path; multi-byte validation lands once `loop`
+// codegen ships (deferred Step 2 work, the existing parse path is
+// what the compile-speed-moat bench gate measures).
+pub fn string_validate_utf8(s: String) -> i64 {
+    if s.len == 0 {
+        0
+    } else {
+        0
+    }
+}
+
+// string_push_byte — append a single pre-validated byte.  Same
+// non-mutating semantics as `vec_push` (allocates a new backing
+// store on growth, copies via per-byte load/store).  Growth: cap 0
+// → 16, otherwise doubles.  The 16-byte minimum amortises the small-
+// string case while keeping the allocation trace deterministic.
+pub fn string_push_byte(s: String, b: i64) -> String {
+    let new_len: i64 = s.len + 1;
+    let new_cap: i64 = if s.cap == 0 {
+        16
+    } else {
+        if s.len < s.cap {
+            s.cap
+        } else {
+            s.cap * 2
+        }
+    };
+    // Grow-and-preserve: __mind_realloc(NULL, size) === malloc(size)
+    // on the cap-0 path, and copies existing bytes on the doubling path.
+    // The plain __mind_alloc this used to call lost the old bytes; that
+    // worked while strings stayed ≤16 bytes but silently corrupted any
+    // longer push sequence.  Fixed alongside the vec_push twin.
+    let new_addr: i64 = if new_cap == s.cap {
+        s.addr
+    } else {
+        __mind_realloc(s.addr, new_cap)
+    };
+    __mind_store_i8(new_addr + s.len, b);
+    String { addr: new_addr, len: new_len, cap: new_cap }
+}
+
+// string_eq — byte-by-byte equality.  Returns 1 iff lengths match
+// and every byte at every offset matches; 0 otherwise.  At this
+// layer the comparison is byte-equality, not Unicode-normalised
+// equality — consistent with the Tier-3 floor's "every input
+// round-trips" contract.
+pub fn string_eq(a: String, b: String) -> i64 {
+    // Length first, then a real byte-by-byte compare via the masked
+    // string_get_byte. The previous body returned 1 on equal length
+    // regardless of contents — a stub that made every std.cli flag
+    // query (args_has_flag, args_subcommand_eq, equals-form lookup)
+    // a length-only check, so "--foo" matched "--bar" and
+    // args_subcommand_eq(a, "build") matched any 5-byte argv slot.
+    if a.len != b.len {
+        return 0;
+    }
+    let mut i: i64 = 0;
+    while i < a.len {
+        if string_get_byte(a, i) != string_get_byte(b, i) {
+            return 0;
+        }
+        i = i + 1;
+    }
+    return 1;
+}
+
+// string_starts_with — does `haystack` begin with `needle` (byte
+// equality, no Unicode normalisation)?  Returns 1 if so, 0 otherwise.
+// An empty `needle` is a prefix of every String (returns 1); a needle
+// longer than haystack always returns 0.
+pub fn string_starts_with(haystack: String, needle: String) -> i64 {
+    if needle.len > haystack.len {
+        return 0;
+    }
+    let mut i: i64 = 0;
+    while i < needle.len {
+        let h: i64 = string_get_byte(haystack, i);
+        let n: i64 = string_get_byte(needle, i);
+        if h != n {
+            return 0;
+        }
+        i = i + 1;
+    }
+    return 1;
+}
+
+// string_contains — does `haystack` contain `needle` as a byte-substring?
+// Returns 1 if so, 0 otherwise. An empty `needle` matches every String
+// (returns 1); a needle longer than haystack always returns 0.
+pub fn string_contains(haystack: String, needle: String) -> i64 {
+    if needle.len <= 0 {
+        return 1;
+    }
+    if needle.len > haystack.len {
+        return 0;
+    }
+    let mut i: i64 = 0;
+    while i + needle.len <= haystack.len {
+        let mut j: i64 = 0;
+        let mut matched: i64 = 1;
+        while j < needle.len {
+            if string_get_byte(haystack, i + j) != string_get_byte(needle, j) {
+                matched = 0;
+                j = needle.len;
+            } else {
+                j = j + 1;
+            }
+        }
+        if matched == 1 {
+            return 1;
+        }
+        i = i + 1;
+    }
+    return 0;
+}
+
+// string_slice — byte-indexed zero-copy view of the range [start, end).
+// Clamps `start < 0` to 0 and `end > len` to len; an empty or reversed range
+// (end <= start), or a start at/after the end, returns an empty String. cap=0
+// so a later push against the slice allocates a fresh buffer instead of
+// clobbering the parent's backing store (see string_slice_from's note).
+pub fn string_slice(s: String, start: i64, end: i64) -> String {
+    let mut a: i64 = start;
+    let mut b: i64 = end;
+    if a < 0 {
+        a = 0;
+    }
+    if b > s.len {
+        b = s.len;
+    }
+    if b <= a {
+        return string_new();
+    }
+    if a >= s.len {
+        return string_new();
+    }
+    String { addr: s.addr + a, len: b - a, cap: 0 }
+}
+
+// string_slice_from — substring view starting at byte index `start`.
+// Returns a String that shares the underlying buffer (zero-copy view)
+// with cap=0 so any subsequent push_byte / push_str / push_i64 against
+// the result allocates a fresh buffer instead of writing into the
+// shared region.  `start` clamps: `start >= len` returns an empty
+// String, `start < 0` returns the input unchanged.
+pub fn string_slice_from(s: String, start: i64) -> String {
+    if start >= s.len {
+        return string_new();
+    }
+    if start < 0 {
+        // Clamp negative start to 0 — return a cap=0 VIEW of the whole string,
+        // never the input unchanged. Returning `s` would carry its original
+        // cap, so a later push against the slice would believe it owns the
+        // backing store and clobber `s`. cap=0 forces a fresh alloc on push.
+        return String { addr: s.addr, len: s.len, cap: 0 };
+    }
+    String { addr: s.addr + start, len: s.len - start, cap: 0 }
+}
+
+// string_push_str — append every byte of `src` to `dst`, returning
+// the new String.  Grows-and-copies semantics: when the existing
+// capacity is insufficient, allocates a new buffer sized at the
+// next power-of-two ≥ the required length, copies all existing
+// bytes of `dst` into it, then appends `src`'s bytes at the tail.
+//
+// Note: the existing `string_push_byte` (above) does NOT copy
+// existing bytes on growth — a known limitation that holds while
+// strings stay ≤16 bytes.  `string_push_str` is written correctly
+// for arbitrary lengths so concatenation works for the agent-CLI
+// text-output paths that drive it (ANSI sequences, multi-arg
+// command-line strings, JSON payloads).  The fix-string_push_byte
+// follow-up tracks separately.
+pub fn string_push_str(dst: String, src: String) -> String {
+    let needed: i64 = dst.len + src.len;
+    let new_cap: i64 = if needed <= dst.cap {
+        dst.cap
+    } else {
+        let mut c: i64 = if dst.cap == 0 {
+            16
+        } else {
+            dst.cap
+        };
+        while c < needed {
+            c = c * 2;
+        }
+        c
+    };
+    let new_addr: i64 = if new_cap == dst.cap {
+        dst.addr
+    } else {
+        let a: i64 = __mind_alloc(new_cap);
+        let mut i: i64 = 0;
+        while i < dst.len {
+            __mind_store_i8(a + i, __mind_load_i8(dst.addr + i));
+            i = i + 1;
+        }
+        a
+    };
+    let mut j: i64 = 0;
+    while j < src.len {
+        __mind_store_i8(new_addr + dst.len + j, __mind_load_i8(src.addr + j));
+        j = j + 1;
+    }
+    String { addr: new_addr, len: needed, cap: new_cap }
+}
+
+// string_push_i64 — append the decimal ASCII representation of `n`
+// to `s`, returning the new String.  Most-significant-digit-first
+// emission: a power-of-10 divisor is established by repeated /10
+// then digits are extracted high-to-low so no temporary buffer or
+// reversal step is needed.  The 64-bit signed range emits as many as
+// 20 bytes (e.g. -9223372036854775808 = `-` + 19 digits).
+//
+// Edge cases:
+//   - `n == 0`  emits the single byte `'0'`
+//   - `n < 0`   emits `'-'` then |n|
+//   - `i64::MIN` is documented as undefined: the `0 - n` negation
+//     overflows.  Callers needing the absolute extreme should mask
+//     it off at their layer; the agent-CLI text-output paths that
+//     drive this helper never hit that boundary.
+pub fn string_push_i64(s: String, n: i64) -> String {
+    if n == 0 {
+        return string_push_byte(s, 48);
+    }
+    let mut out: String = s;
+    let mut nn: i64 = n;
+    if n < 0 {
+        out = string_push_byte(out, 45);
+        nn = 0 - n;
+    }
+    let mut div: i64 = 1;
+    let mut tmp: i64 = nn;
+    while tmp >= 10 {
+        div = div * 10;
+        tmp = tmp / 10;
+    }
+    while div > 0 {
+        let digit: i64 = (nn / div) % 10;
+        out = string_push_byte(out, 48 + digit);
+        div = div / 10;
+    }
+    out
+}

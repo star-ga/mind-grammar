@@ -1,0 +1,17 @@
+// SYNTAX TEST "source.mind" "imports, use and export"
+
+import std.vec;
+// <------ keyword.control.import.mind
+//     ^^^^^^^ entity.name.namespace.mind
+//            ^ punctuation.terminator.statement.mind
+use std::io;
+// <--- keyword.control.import.mind
+//  ^^^^^^^ entity.name.namespace.mind
+import std.tensor as t;
+//                ^^ keyword.other.as.mind
+export { checked }
+// <------ keyword.control.import.mind
+    let important = 1;
+//      ^^^^^^^^^ variable.other.mind - keyword.control.import.mind
+    let user = 2;
+//      ^^^^ - keyword.control.import.mind

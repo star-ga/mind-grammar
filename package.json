@@ -1,0 +1,70 @@
+{
+  "name": "mind-grammar",
+  "displayName": "MIND-Grammar",
+  "description": "TextMate grammar and syntax highlighting for the MIND programming language (.mind files).",
+  "version": "0.2.0",
+  "publisher": "star-ga",
+  "author": "STARGA Inc <noreply@star.ga>",
+  "license": "Apache-2.0",
+  "icon": "images/icon.png",
+  "private": true,
+  "homepage": "https://mindlang.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/star-ga/mind-grammar.git"
+  },
+  "bugs": {
+    "url": "https://github.com/star-ga/mind-grammar/issues"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "mind",
+    "mindlang",
+    "textmate",
+    "grammar",
+    "syntax highlighting"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "mind",
+        "aliases": [
+          "MIND",
+          "mind"
+        ],
+        "extensions": [
+          ".mind"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "mind",
+        "scopeName": "source.mind",
+        "path": "./source.mind.json"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "npm run test:unit && npm run test:snap && npm run test:corpus",
+    "test:unit": "vscode-tmgrammar-test -g source.mind.json \"tests/cases/*.mind\"",
+    "test:snap": "vscode-tmgrammar-snap -g source.mind.json \"tests/snap/*.mind\" \"samples/*.mind\"",
+    "test:snap:update": "vscode-tmgrammar-snap -g source.mind.json --updateSnapshot \"tests/snap/*.mind\" \"samples/*.mind\"",
+    "test:corpus": "node scripts/corpus-check.mjs",
+    "screenshots": "node scripts/render-screenshots.mjs",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^4.0.0",
+    "shiki": "^4.5.0",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.3.2",
+    "vscode-tmgrammar-test": "^0.1.3"
+  }
+}

@@ -1,0 +1,3001 @@
+>// std/net.mind — Task #268: POSIX socket surface in pure MIND.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Provides IPv4/IPv6 TCP + UDP over libc via extern "C" declarations.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// All handles (TcpListener, TcpStream, UdpSocket) are heap records:
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//   offset 0: fd (i64)
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>//
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+>// Determinism: all operations are synchronous / blocking POSIX.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// No async, no TLS (RFC 0011 scope).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// POSIX constants
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn af_inet() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^ source.mind entity.name.function.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^^ source.mind keyword.operator.arrow.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.brackets.curly.mind
+>    2
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn af_inet6() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^^ source.mind keyword.operator.arrow.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>    10
+#^^^^ source.mind
+#    ^^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn sock_stream() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^^ source.mind keyword.operator.arrow.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.brackets.curly.mind
+>    1
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn sock_dgram() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.arrow.mind
+#                      ^ source.mind
+#                       ^^^ source.mind storage.type.primitive.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+>    2
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn sol_socket() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^^ source.mind keyword.operator.arrow.mind
+#                      ^ source.mind
+#                       ^^^ source.mind storage.type.primitive.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.brackets.curly.mind
+>    1
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>pub fn so_reuseaddr() -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^^ source.mind keyword.operator.arrow.mind
+#                        ^ source.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind
+#                             ^ source.mind punctuation.brackets.curly.mind
+>    2
+#^^^^ source.mind
+#    ^ source.mind constant.numeric.integer.decimal.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// libc extern "C" surface
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>extern "C" {
+#^^^^^^ source.mind storage.type.mind
+#      ^ source.mind
+#       ^ source.mind string.quoted.double.mind punctuation.definition.string.begin.mind
+#        ^ source.mind string.quoted.double.mind
+#         ^ source.mind string.quoted.double.mind punctuation.definition.string.end.mind
+#          ^ source.mind
+#           ^ source.mind punctuation.brackets.curly.mind
+>    unsafe fn socket(domain: i32, type_: i32, protocol: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^^^ source.mind storage.type.primitive.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^^^^^^ source.mind
+#                                                      ^ source.mind punctuation.separator.colon.mind
+#                                                       ^ source.mind
+#                                                        ^^^ source.mind storage.type.primitive.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind
+#                                                             ^^ source.mind keyword.operator.arrow.mind
+#                                                               ^ source.mind
+#                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                   ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn bind(sockfd: i32, addr: *const u8, addrlen: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^^^^ source.mind storage.type.mind
+#                                            ^ source.mind
+#                                             ^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.separator.comma.mind
+#                                                ^^^^^^^^ source.mind
+#                                                        ^ source.mind punctuation.separator.colon.mind
+#                                                         ^ source.mind
+#                                                          ^^^ source.mind storage.type.primitive.mind
+#                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                              ^ source.mind
+#                                                               ^^ source.mind keyword.operator.arrow.mind
+#                                                                 ^ source.mind
+#                                                                  ^^^ source.mind storage.type.primitive.mind
+#                                                                     ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn listen(sockfd: i32, backlog: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^^^^^^ source.mind
+#                                         ^ source.mind punctuation.separator.colon.mind
+#                                          ^ source.mind
+#                                           ^^^ source.mind storage.type.primitive.mind
+#                                              ^ source.mind punctuation.brackets.round.mind
+#                                               ^ source.mind
+#                                                ^^ source.mind keyword.operator.arrow.mind
+#                                                  ^ source.mind
+#                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                      ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn accept(sockfd: i32, addr: *mut u8, addrlen: *mut u8) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^^^ source.mind
+#                                      ^ source.mind punctuation.separator.colon.mind
+#                                       ^ source.mind
+#                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                         ^^^ source.mind storage.modifier.mind
+#                                            ^ source.mind
+#                                             ^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.separator.comma.mind
+#                                                ^^^^^^^^ source.mind
+#                                                        ^ source.mind punctuation.separator.colon.mind
+#                                                         ^ source.mind
+#                                                          ^ source.mind keyword.operator.arithmetic.mind
+#                                                           ^^^ source.mind storage.modifier.mind
+#                                                              ^ source.mind
+#                                                               ^^ source.mind storage.type.primitive.mind
+#                                                                 ^ source.mind punctuation.brackets.round.mind
+#                                                                  ^ source.mind
+#                                                                   ^^ source.mind keyword.operator.arrow.mind
+#                                                                     ^ source.mind
+#                                                                      ^^^ source.mind storage.type.primitive.mind
+#                                                                         ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn connect(sockfd: i32, addr: *const u8, addrlen: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^^ source.mind entity.name.function.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^^^^ source.mind
+#                            ^ source.mind punctuation.separator.colon.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^ source.mind keyword.operator.arithmetic.mind
+#                                          ^^^^^ source.mind storage.type.mind
+#                                               ^ source.mind
+#                                                ^^ source.mind storage.type.primitive.mind
+#                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                   ^^^^^^^^ source.mind
+#                                                           ^ source.mind punctuation.separator.colon.mind
+#                                                            ^ source.mind
+#                                                             ^^^ source.mind storage.type.primitive.mind
+#                                                                ^ source.mind punctuation.brackets.round.mind
+#                                                                 ^ source.mind
+#                                                                  ^^ source.mind keyword.operator.arrow.mind
+#                                                                    ^ source.mind
+#                                                                     ^^^ source.mind storage.type.primitive.mind
+#                                                                        ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn send(sockfd: i32, buf: *const u8, len: i64, flags: i32) -> i64;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^ source.mind keyword.operator.arithmetic.mind
+#                                      ^^^^^ source.mind storage.type.mind
+#                                           ^ source.mind
+#                                            ^^ source.mind storage.type.primitive.mind
+#                                              ^ source.mind punctuation.separator.comma.mind
+#                                               ^^^^ source.mind
+#                                                   ^ source.mind punctuation.separator.colon.mind
+#                                                    ^ source.mind
+#                                                     ^^^ source.mind storage.type.primitive.mind
+#                                                        ^ source.mind punctuation.separator.comma.mind
+#                                                         ^^^^^^ source.mind
+#                                                               ^ source.mind punctuation.separator.colon.mind
+#                                                                ^ source.mind
+#                                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                                     ^ source.mind
+#                                                                      ^^ source.mind keyword.operator.arrow.mind
+#                                                                        ^ source.mind
+#                                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                                            ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn recv(sockfd: i32, buf: *mut u8, len: i64, flags: i32) -> i64;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^^ source.mind
+#                                   ^ source.mind punctuation.separator.colon.mind
+#                                    ^ source.mind
+#                                     ^ source.mind keyword.operator.arithmetic.mind
+#                                      ^^^ source.mind storage.modifier.mind
+#                                         ^ source.mind
+#                                          ^^ source.mind storage.type.primitive.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^^^^ source.mind
+#                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                  ^ source.mind
+#                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                       ^^^^^^ source.mind
+#                                                             ^ source.mind punctuation.separator.colon.mind
+#                                                              ^ source.mind
+#                                                               ^^^ source.mind storage.type.primitive.mind
+#                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind keyword.operator.arrow.mind
+#                                                                      ^ source.mind
+#                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                          ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn sendto(sockfd: i32, buf: *const u8, len: i64, flags: i32, dest_addr: *const u8, addrlen: i32) -> i64;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^^ source.mind
+#                                     ^ source.mind punctuation.separator.colon.mind
+#                                      ^ source.mind
+#                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                        ^^^^^ source.mind storage.type.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^ source.mind
+#                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                      ^ source.mind
+#                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                           ^^^^^^ source.mind
+#                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                                       ^^^^^^^^^^ source.mind
+#                                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                                  ^ source.mind
+#                                                                                   ^ source.mind keyword.operator.arithmetic.mind
+#                                                                                    ^^^^^ source.mind storage.type.mind
+#                                                                                         ^ source.mind
+#                                                                                          ^^ source.mind storage.type.primitive.mind
+#                                                                                            ^ source.mind punctuation.separator.comma.mind
+#                                                                                             ^^^^^^^^ source.mind
+#                                                                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                                                                      ^ source.mind
+#                                                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                                                          ^ source.mind punctuation.brackets.round.mind
+#                                                                                                           ^ source.mind
+#                                                                                                            ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                              ^ source.mind
+#                                                                                                               ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                  ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn recvfrom(sockfd: i32, buf: *mut u8, len: i64, flags: i32, src_addr: *mut u8, addrlen: *mut u8) -> i64;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^^^^^^ source.mind
+#                             ^ source.mind punctuation.separator.colon.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^ source.mind keyword.operator.arithmetic.mind
+#                                          ^^^ source.mind storage.modifier.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^ source.mind
+#                                                     ^ source.mind punctuation.separator.colon.mind
+#                                                      ^ source.mind
+#                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                          ^ source.mind punctuation.separator.comma.mind
+#                                                           ^^^^^^ source.mind
+#                                                                 ^ source.mind punctuation.separator.colon.mind
+#                                                                  ^ source.mind
+#                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                      ^ source.mind punctuation.separator.comma.mind
+#                                                                       ^^^^^^^^^ source.mind
+#                                                                                ^ source.mind punctuation.separator.colon.mind
+#                                                                                 ^ source.mind
+#                                                                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                                                                   ^^^ source.mind storage.modifier.mind
+#                                                                                      ^ source.mind
+#                                                                                       ^^ source.mind storage.type.primitive.mind
+#                                                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                                                          ^^^^^^^^ source.mind
+#                                                                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                                                                   ^ source.mind
+#                                                                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                                                                     ^^^ source.mind storage.modifier.mind
+#                                                                                                        ^ source.mind
+#                                                                                                         ^^ source.mind storage.type.primitive.mind
+#                                                                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                                                                            ^ source.mind
+#                                                                                                             ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                               ^ source.mind
+#                                                                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                                                                   ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn close(fd: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn ntohs(netshort: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^^ source.mind
+#                            ^ source.mind punctuation.separator.colon.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind
+#                                   ^^ source.mind keyword.operator.arrow.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn inet_pton(af: i32, src: *const u8, dst: *mut u8) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^^^^ source.mind entity.name.function.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                       ^^^^^ source.mind storage.type.mind
+#                                            ^ source.mind
+#                                             ^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.separator.comma.mind
+#                                                ^^^^ source.mind
+#                                                    ^ source.mind punctuation.separator.colon.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind keyword.operator.arithmetic.mind
+#                                                       ^^^ source.mind storage.modifier.mind
+#                                                          ^ source.mind
+#                                                           ^^ source.mind storage.type.primitive.mind
+#                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                              ^ source.mind
+#                                                               ^^ source.mind keyword.operator.arrow.mind
+#                                                                 ^ source.mind
+#                                                                  ^^^ source.mind storage.type.primitive.mind
+#                                                                     ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn getsockname(sockfd: i32, addr: *mut u8, addrlen: *mut u8) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^^^^^^ source.mind entity.name.function.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^^^^^^ source.mind
+#                                ^ source.mind punctuation.separator.colon.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind punctuation.separator.comma.mind
+#                                      ^^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.colon.mind
+#                                            ^ source.mind
+#                                             ^ source.mind keyword.operator.arithmetic.mind
+#                                              ^^^ source.mind storage.modifier.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind storage.type.primitive.mind
+#                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                     ^^^^^^^^ source.mind
+#                                                             ^ source.mind punctuation.separator.colon.mind
+#                                                              ^ source.mind
+#                                                               ^ source.mind keyword.operator.arithmetic.mind
+#                                                                ^^^ source.mind storage.modifier.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind storage.type.primitive.mind
+#                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                       ^ source.mind
+#                                                                        ^^ source.mind keyword.operator.arrow.mind
+#                                                                          ^ source.mind
+#                                                                           ^^^ source.mind storage.type.primitive.mind
+#                                                                              ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn setsockopt(sockfd: i32, level: i32, optname: i32, optval: *const u8, optlen: i32) -> i32;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^^^^^ source.mind entity.name.function.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^ source.mind
+#                               ^ source.mind punctuation.separator.colon.mind
+#                                ^ source.mind
+#                                 ^^^ source.mind storage.type.primitive.mind
+#                                    ^ source.mind punctuation.separator.comma.mind
+#                                     ^^^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.colon.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^^^^ source.mind
+#                                                         ^ source.mind punctuation.separator.colon.mind
+#                                                          ^ source.mind
+#                                                           ^^^ source.mind storage.type.primitive.mind
+#                                                              ^ source.mind punctuation.separator.comma.mind
+#                                                               ^^^^^^^ source.mind
+#                                                                      ^ source.mind punctuation.separator.colon.mind
+#                                                                       ^ source.mind
+#                                                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                                                         ^^^^^ source.mind storage.type.mind
+#                                                                              ^ source.mind
+#                                                                               ^^ source.mind storage.type.primitive.mind
+#                                                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                                                  ^^^^^^^ source.mind
+#                                                                                         ^ source.mind punctuation.separator.colon.mind
+#                                                                                          ^ source.mind
+#                                                                                           ^^^ source.mind storage.type.primitive.mind
+#                                                                                              ^ source.mind punctuation.brackets.round.mind
+#                                                                                               ^ source.mind
+#                                                                                                ^^ source.mind keyword.operator.arrow.mind
+#                                                                                                  ^ source.mind
+#                                                                                                   ^^^ source.mind storage.type.primitive.mind
+#                                                                                                      ^ source.mind punctuation.terminator.statement.mind
+>    unsafe fn memset(ptr: *mut u8, value: i32, num: i64) -> *mut u8;
+#^^^^ source.mind
+#    ^^^^^^ source.mind storage.modifier.mind
+#          ^ source.mind
+#           ^^ source.mind storage.type.function.mind
+#             ^ source.mind
+#              ^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^ source.mind keyword.operator.arithmetic.mind
+#                           ^^^ source.mind storage.modifier.mind
+#                              ^ source.mind
+#                               ^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^^ source.mind
+#                                        ^ source.mind punctuation.separator.colon.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind storage.type.primitive.mind
+#                                             ^ source.mind punctuation.separator.comma.mind
+#                                              ^^^^ source.mind
+#                                                  ^ source.mind punctuation.separator.colon.mind
+#                                                   ^ source.mind
+#                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind
+#                                                         ^^ source.mind keyword.operator.arrow.mind
+#                                                           ^ source.mind
+#                                                            ^ source.mind keyword.operator.arithmetic.mind
+#                                                             ^^^ source.mind storage.modifier.mind
+#                                                                ^ source.mind
+#                                                                 ^^ source.mind storage.type.primitive.mind
+#                                                                   ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Internal heap-record helpers
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>fn net_alloc_handle(fd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    let h: i64 = __mind_alloc(8);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind constant.numeric.integer.decimal.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i64(h, fd);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^ source.mind
+#                          ^ source.mind punctuation.brackets.round.mind
+#                           ^ source.mind punctuation.terminator.statement.mind
+>    h
+#^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn net_handle_fd(h: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^^ source.mind keyword.operator.arrow.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind
+#                                ^ source.mind punctuation.brackets.curly.mind
+>    __mind_load_i64(h)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^ source.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn net_build_sockaddr_in(ip_str_addr: i64, port: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^^ source.mind
+#                                               ^ source.mind punctuation.separator.colon.mind
+#                                                ^ source.mind
+#                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind
+#                                                      ^^ source.mind keyword.operator.arrow.mind
+#                                                        ^ source.mind
+#                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                            ^ source.mind
+#                                                             ^ source.mind punctuation.brackets.curly.mind
+>    let sa: i64 = __mind_alloc(16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = memset(sa as *mut u8, 0, 16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^ source.mind
+#                      ^^ source.mind keyword.other.as.mind
+#                        ^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^ source.mind storage.modifier.mind
+#                             ^ source.mind
+#                              ^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^ source.mind
+#                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 0, 2);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 1, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind constant.numeric.integer.decimal.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind punctuation.terminator.statement.mind
+>    // sin_port is ALWAYS network byte order (big-endian): high byte first.
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // Write it explicitly rather than via htons() so the encoding is correct
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // and identical on every substrate regardless of host endianness. (The
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // previous code applied htons AND this big-endian split, double-swapping
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    // the port on little-endian hosts and sending datagrams to the wrong port.)
+#^^^^ source.mind
+#    ^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>    __mind_store_i8(sa + 2, (port >> 8) & 255);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^^^^^ source.mind
+#                                  ^^ source.mind keyword.operator.bitwise.shift.mind
+#                                    ^ source.mind
+#                                     ^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind
+#                                        ^ source.mind keyword.operator.bitwise.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                             ^ source.mind punctuation.brackets.round.mind
+#                                              ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 3, port & 255);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^^^^^^ source.mind
+#                                 ^ source.mind keyword.operator.bitwise.mind
+#                                  ^ source.mind
+#                                   ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>    let inet_buf: i64 = __mind_alloc(4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^^^ source.mind variable.other.mind
+#                ^ source.mind punctuation.separator.colon.mind
+#                 ^ source.mind
+#                  ^^^ source.mind storage.type.primitive.mind
+#                     ^ source.mind
+#                      ^ source.mind keyword.operator.assignment.mind
+#                       ^ source.mind
+#                        ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind constant.numeric.integer.decimal.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind punctuation.terminator.statement.mind
+>    let _ = inet_pton(2, ip_str_addr as *const u8, inet_buf as *mut u8);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^ source.mind constant.numeric.integer.decimal.mind
+#                       ^ source.mind punctuation.separator.comma.mind
+#                        ^^^^^^^^^^^^^ source.mind
+#                                     ^^ source.mind keyword.other.as.mind
+#                                       ^ source.mind
+#                                        ^ source.mind keyword.operator.arithmetic.mind
+#                                         ^^^^^ source.mind storage.type.mind
+#                                              ^ source.mind
+#                                               ^^ source.mind storage.type.primitive.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^^^^^^ source.mind
+#                                                            ^^ source.mind keyword.other.as.mind
+#                                                              ^ source.mind
+#                                                               ^ source.mind keyword.operator.arithmetic.mind
+#                                                                ^^^ source.mind storage.modifier.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind storage.type.primitive.mind
+#                                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                                       ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 4, __mind_load_i8(inet_buf + 0));
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^^^^^^^^^ source.mind
+#                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 5, __mind_load_i8(inet_buf + 1));
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^^^^^^^^^ source.mind
+#                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 6, __mind_load_i8(inet_buf + 2));
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^^^^^^^^^ source.mind
+#                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(sa + 7, __mind_load_i8(inet_buf + 3));
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^ source.mind
+#                       ^ source.mind keyword.operator.arithmetic.mind
+#                        ^ source.mind
+#                         ^ source.mind constant.numeric.integer.decimal.mind
+#                          ^ source.mind punctuation.separator.comma.mind
+#                           ^ source.mind
+#                            ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                          ^ source.mind punctuation.brackets.round.mind
+#                                           ^^^^^^^^^ source.mind
+#                                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                                     ^ source.mind
+#                                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.brackets.round.mind
+#                                                         ^ source.mind punctuation.terminator.statement.mind
+>    sa
+#^^^^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn net_set_reuseaddr(fd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.separator.colon.mind
+#                        ^ source.mind
+#                         ^^^ source.mind storage.type.primitive.mind
+#                            ^ source.mind punctuation.brackets.round.mind
+#                             ^ source.mind
+#                              ^^ source.mind keyword.operator.arrow.mind
+#                                ^ source.mind
+#                                 ^^^ source.mind storage.type.primitive.mind
+#                                    ^ source.mind
+#                                     ^ source.mind punctuation.brackets.curly.mind
+>    let optval: i64 = __mind_alloc(4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^ source.mind
+#                      ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(optval + 0, 1);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(optval + 1, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(optval + 2, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(optval + 3, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    setsockopt(fd as i32, sol_socket() as i32, so_reuseaddr() as i32, optval as *const u8, 4) as i64
+#^^^^ source.mind
+#    ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#              ^ source.mind punctuation.brackets.round.mind
+#               ^^^ source.mind
+#                  ^^ source.mind keyword.other.as.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.separator.comma.mind
+#                         ^ source.mind
+#                          ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.brackets.round.mind
+#                                      ^ source.mind
+#                                       ^^ source.mind keyword.other.as.mind
+#                                         ^ source.mind
+#                                          ^^^ source.mind storage.type.primitive.mind
+#                                             ^ source.mind punctuation.separator.comma.mind
+#                                              ^ source.mind
+#                                               ^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                           ^ source.mind punctuation.brackets.round.mind
+#                                                            ^ source.mind punctuation.brackets.round.mind
+#                                                             ^ source.mind
+#                                                              ^^ source.mind keyword.other.as.mind
+#                                                                ^ source.mind
+#                                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                     ^^^^^^^^ source.mind
+#                                                                             ^^ source.mind keyword.other.as.mind
+#                                                                               ^ source.mind
+#                                                                                ^ source.mind keyword.operator.arithmetic.mind
+#                                                                                 ^^^^^ source.mind storage.type.mind
+#                                                                                      ^ source.mind
+#                                                                                       ^^ source.mind storage.type.primitive.mind
+#                                                                                         ^ source.mind punctuation.separator.comma.mind
+#                                                                                          ^ source.mind
+#                                                                                           ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                                            ^ source.mind punctuation.brackets.round.mind
+#                                                                                             ^ source.mind
+#                                                                                              ^^ source.mind keyword.other.as.mind
+#                                                                                                ^ source.mind
+#                                                                                                 ^^^ source.mind storage.type.primitive.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>fn net_getsockname_port(fd: i64) -> i64 {
+#^^ source.mind storage.type.function.mind
+#  ^ source.mind
+#   ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^^ source.mind
+#                          ^ source.mind punctuation.separator.colon.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^^ source.mind keyword.operator.arrow.mind
+#                                   ^ source.mind
+#                                    ^^^ source.mind storage.type.primitive.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.curly.mind
+>    let sa: i64 = __mind_alloc(16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = memset(sa as *mut u8, 0, 16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^ source.mind
+#                      ^^ source.mind keyword.other.as.mind
+#                        ^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^ source.mind storage.modifier.mind
+#                             ^ source.mind
+#                              ^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^ source.mind
+#                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    let lenptr: i64 = __mind_alloc(4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^ source.mind
+#                      ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 0, 16);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^^ source.mind constant.numeric.integer.decimal.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 1, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 2, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 3, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = getsockname(fd as i32, sa as *mut u8, lenptr as *mut u8);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^^^ source.mind
+#                           ^^ source.mind keyword.other.as.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^ source.mind
+#                                      ^^ source.mind keyword.other.as.mind
+#                                        ^ source.mind
+#                                         ^ source.mind keyword.operator.arithmetic.mind
+#                                          ^^^ source.mind storage.modifier.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^^^^^^^^ source.mind
+#                                                         ^^ source.mind keyword.other.as.mind
+#                                                           ^ source.mind
+#                                                            ^ source.mind keyword.operator.arithmetic.mind
+#                                                             ^^^ source.mind storage.modifier.mind
+#                                                                ^ source.mind
+#                                                                 ^^ source.mind storage.type.primitive.mind
+#                                                                   ^ source.mind punctuation.brackets.round.mind
+#                                                                    ^ source.mind punctuation.terminator.statement.mind
+>    let b0: i64 = __mind_load_i8(sa + 2);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^^^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^ source.mind
+#                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    let b1: i64 = __mind_load_i8(sa + 3);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^^^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^ source.mind
+#                                      ^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    b0 * 256 + b1
+#^^^^^^^ source.mind
+#       ^ source.mind keyword.operator.arithmetic.mind
+#        ^ source.mind
+#         ^^^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind keyword.operator.arithmetic.mind
+#              ^^^^ source.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Public: TcpListener
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn tcp_listener_fd(l: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^^ source.mind keyword.operator.arrow.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind
+#                                      ^ source.mind punctuation.brackets.curly.mind
+>    net_handle_fd(l)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_listen — create and bind a TCP server socket.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// host_addr must be a NUL-terminated address string (e.g. "0.0.0.0\0").
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a TcpListener handle or 0 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_listen(host_addr: i64, port: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^^^^^^^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^^^^^ source.mind
+#                                      ^ source.mind punctuation.separator.colon.mind
+#                                       ^ source.mind
+#                                        ^^^ source.mind storage.type.primitive.mind
+#                                           ^ source.mind punctuation.brackets.round.mind
+#                                            ^ source.mind
+#                                             ^^ source.mind keyword.operator.arrow.mind
+#                                               ^ source.mind
+#                                                ^^^ source.mind storage.type.primitive.mind
+#                                                   ^ source.mind
+#                                                    ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = socket(af_inet() as i32, sock_stream() as i32, 0) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind
+#                                   ^^ source.mind keyword.other.as.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^ source.mind
+#                                           ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind
+#                                                         ^^ source.mind keyword.other.as.mind
+#                                                           ^ source.mind
+#                                                            ^^^ source.mind storage.type.primitive.mind
+#                                                               ^ source.mind punctuation.separator.comma.mind
+#                                                                ^ source.mind
+#                                                                 ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind keyword.other.as.mind
+#                                                                      ^ source.mind
+#                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                          ^ source.mind punctuation.terminator.statement.mind
+>    if fd < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let _ = net_set_reuseaddr(fd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^^ source.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    let sa: i64 = net_build_sockaddr_in(host_addr, port);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^^^^^^^^ source.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^ source.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    let r: i64 = bind(fd as i32, sa as *const u8, 16) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^^ source.mind
+#                                    ^^ source.mind keyword.other.as.mind
+#                                      ^ source.mind
+#                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                        ^^^^^ source.mind storage.type.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind
+#                                                      ^^ source.mind keyword.other.as.mind
+#                                                        ^ source.mind
+#                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>    if r < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind punctuation.brackets.curly.mind
+>        let _ = close(fd as i32);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let r2: i64 = listen(fd as i32, 128) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^ source.mind
+#                            ^^ source.mind keyword.other.as.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^ source.mind
+#                                    ^^^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind
+#                                         ^^ source.mind keyword.other.as.mind
+#                                           ^ source.mind
+#                                            ^^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.terminator.statement.mind
+>    if r2 < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        let _ = close(fd as i32);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    net_alloc_handle(fd)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_listen_port — returns the actual bound port (useful when port=0).
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_listen_port(l: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^^ source.mind keyword.operator.arrow.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind
+#                                      ^ source.mind punctuation.brackets.curly.mind
+>    net_getsockname_port(net_handle_fd(l))
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_accept — accept a new connection on a TcpListener.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a TcpStream handle or 0 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_accept(l: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^ source.mind entity.name.function.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.separator.colon.mind
+#                    ^ source.mind
+#                     ^^^ source.mind storage.type.primitive.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^ source.mind
+#                          ^^ source.mind keyword.operator.arrow.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.curly.mind
+>    let lfd: i64 = net_handle_fd(l);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^ source.mind variable.other.mind
+#           ^ source.mind punctuation.separator.colon.mind
+#            ^ source.mind
+#             ^^^ source.mind storage.type.primitive.mind
+#                ^ source.mind
+#                 ^ source.mind keyword.operator.assignment.mind
+#                  ^ source.mind
+#                   ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    let sa: i64 = __mind_alloc(16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = memset(sa as *mut u8, 0, 16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^ source.mind
+#                      ^^ source.mind keyword.other.as.mind
+#                        ^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^ source.mind storage.modifier.mind
+#                             ^ source.mind
+#                              ^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^ source.mind
+#                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    let lenptr: i64 = __mind_alloc(4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^ source.mind
+#                      ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 0, 16);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^^ source.mind constant.numeric.integer.decimal.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 1, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 2, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 3, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let fd: i64 = accept(lfd as i32, sa as *mut u8, lenptr as *mut u8) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^ source.mind
+#                             ^^ source.mind keyword.other.as.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^^^^ source.mind
+#                                        ^^ source.mind keyword.other.as.mind
+#                                          ^ source.mind
+#                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                            ^^^ source.mind storage.modifier.mind
+#                                               ^ source.mind
+#                                                ^^ source.mind storage.type.primitive.mind
+#                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                   ^^^^^^^^ source.mind
+#                                                           ^^ source.mind keyword.other.as.mind
+#                                                             ^ source.mind
+#                                                              ^ source.mind keyword.operator.arithmetic.mind
+#                                                               ^^^ source.mind storage.modifier.mind
+#                                                                  ^ source.mind
+#                                                                   ^^ source.mind storage.type.primitive.mind
+#                                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                                      ^ source.mind
+#                                                                       ^^ source.mind keyword.other.as.mind
+#                                                                         ^ source.mind
+#                                                                          ^^^ source.mind storage.type.primitive.mind
+#                                                                             ^ source.mind punctuation.terminator.statement.mind
+>    if fd < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    net_alloc_handle(fd)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Public: TcpStream
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn tcp_stream_fd(s: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    net_handle_fd(s)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_connect — connect a TCP client socket to host:port.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a TcpStream handle or 0 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_connect(host_addr: i64, port: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^^^^^^^ source.mind
+#                            ^ source.mind punctuation.separator.colon.mind
+#                             ^ source.mind
+#                              ^^^ source.mind storage.type.primitive.mind
+#                                 ^ source.mind punctuation.separator.comma.mind
+#                                  ^^^^^ source.mind
+#                                       ^ source.mind punctuation.separator.colon.mind
+#                                        ^ source.mind
+#                                         ^^^ source.mind storage.type.primitive.mind
+#                                            ^ source.mind punctuation.brackets.round.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind keyword.operator.arrow.mind
+#                                                ^ source.mind
+#                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                    ^ source.mind
+#                                                     ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = socket(af_inet() as i32, sock_stream() as i32, 0) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind
+#                                   ^^ source.mind keyword.other.as.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^ source.mind
+#                                           ^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind
+#                                                         ^^ source.mind keyword.other.as.mind
+#                                                           ^ source.mind
+#                                                            ^^^ source.mind storage.type.primitive.mind
+#                                                               ^ source.mind punctuation.separator.comma.mind
+#                                                                ^ source.mind
+#                                                                 ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                  ^ source.mind punctuation.brackets.round.mind
+#                                                                   ^ source.mind
+#                                                                    ^^ source.mind keyword.other.as.mind
+#                                                                      ^ source.mind
+#                                                                       ^^^ source.mind storage.type.primitive.mind
+#                                                                          ^ source.mind punctuation.terminator.statement.mind
+>    if fd < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let sa: i64 = net_build_sockaddr_in(host_addr, port);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^^^^^^^^ source.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^ source.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    let r: i64 = connect(fd as i32, sa as *const u8, 16) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^ source.mind
+#                            ^^ source.mind keyword.other.as.mind
+#                              ^ source.mind
+#                               ^^^ source.mind storage.type.primitive.mind
+#                                  ^ source.mind punctuation.separator.comma.mind
+#                                   ^^^^ source.mind
+#                                       ^^ source.mind keyword.other.as.mind
+#                                         ^ source.mind
+#                                          ^ source.mind keyword.operator.arithmetic.mind
+#                                           ^^^^^ source.mind storage.type.mind
+#                                                ^ source.mind
+#                                                 ^^ source.mind storage.type.primitive.mind
+#                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                    ^ source.mind
+#                                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind
+#                                                         ^^ source.mind keyword.other.as.mind
+#                                                           ^ source.mind
+#                                                            ^^^ source.mind storage.type.primitive.mind
+#                                                               ^ source.mind punctuation.terminator.statement.mind
+>    if r < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind punctuation.brackets.curly.mind
+>        let _ = close(fd as i32);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    net_alloc_handle(fd)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_read — read up to `max` bytes from stream into buf_addr.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns bytes read, 0 on EOF, or -1 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_read(s: i64, buf_addr: i64, max: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^ source.mind
+#                 ^ source.mind punctuation.separator.colon.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^^^^^^^ source.mind
+#                                ^ source.mind punctuation.separator.colon.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind punctuation.separator.comma.mind
+#                                      ^^^^ source.mind
+#                                          ^ source.mind punctuation.separator.colon.mind
+#                                           ^ source.mind
+#                                            ^^^ source.mind storage.type.primitive.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+#                                                ^ source.mind
+#                                                 ^^ source.mind keyword.operator.arrow.mind
+#                                                   ^ source.mind
+#                                                    ^^^ source.mind storage.type.primitive.mind
+#                                                       ^ source.mind
+#                                                        ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    recv(fd as i32, buf_addr as *mut u8, max, 0)
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.function.call.mind
+#        ^ source.mind punctuation.brackets.round.mind
+#         ^^^ source.mind
+#            ^^ source.mind keyword.other.as.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+#                   ^^^^^^^^^^ source.mind
+#                             ^^ source.mind keyword.other.as.mind
+#                               ^ source.mind
+#                                ^ source.mind keyword.operator.arithmetic.mind
+#                                 ^^^ source.mind storage.modifier.mind
+#                                    ^ source.mind
+#                                     ^^ source.mind storage.type.primitive.mind
+#                                       ^ source.mind punctuation.separator.comma.mind
+#                                        ^^^^ source.mind
+#                                            ^ source.mind punctuation.separator.comma.mind
+#                                             ^ source.mind
+#                                              ^ source.mind constant.numeric.integer.decimal.mind
+#                                               ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_write — write `len` bytes from buf_addr to stream.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns bytes written or -1 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_write(s: i64, buf_addr: i64, len: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.separator.comma.mind
+#                        ^^^^^^^^^ source.mind
+#                                 ^ source.mind punctuation.separator.colon.mind
+#                                  ^ source.mind
+#                                   ^^^ source.mind storage.type.primitive.mind
+#                                      ^ source.mind punctuation.separator.comma.mind
+#                                       ^^^^ source.mind
+#                                           ^ source.mind punctuation.separator.colon.mind
+#                                            ^ source.mind
+#                                             ^^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.brackets.round.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind keyword.operator.arrow.mind
+#                                                    ^ source.mind
+#                                                     ^^^ source.mind storage.type.primitive.mind
+#                                                        ^ source.mind
+#                                                         ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    send(fd as i32, buf_addr as *const u8, len, 0)
+#^^^^ source.mind
+#    ^^^^ source.mind entity.name.function.call.mind
+#        ^ source.mind punctuation.brackets.round.mind
+#         ^^^ source.mind
+#            ^^ source.mind keyword.other.as.mind
+#              ^ source.mind
+#               ^^^ source.mind storage.type.primitive.mind
+#                  ^ source.mind punctuation.separator.comma.mind
+#                   ^^^^^^^^^^ source.mind
+#                             ^^ source.mind keyword.other.as.mind
+#                               ^ source.mind
+#                                ^ source.mind keyword.operator.arithmetic.mind
+#                                 ^^^^^ source.mind storage.type.mind
+#                                      ^ source.mind
+#                                       ^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^ source.mind
+#                                              ^ source.mind punctuation.separator.comma.mind
+#                                               ^ source.mind
+#                                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                                 ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_close — close a TcpStream fd.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_close(s: i64) {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = close(fd as i32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^ source.mind
+#                     ^^ source.mind keyword.other.as.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// tcp_listener_close — close a TcpListener fd.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn tcp_listener_close(l: i64) {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                         ^ source.mind punctuation.brackets.round.mind
+#                          ^ source.mind
+#                           ^ source.mind punctuation.separator.colon.mind
+#                            ^ source.mind
+#                             ^^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind
+#                                  ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(l);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = close(fd as i32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^ source.mind
+#                     ^^ source.mind keyword.other.as.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Public: UdpSocket
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// ---------------------------------------------------------------------------
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>
+>pub fn udp_socket_fd(s: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind
+#                             ^^ source.mind keyword.operator.arrow.mind
+#                               ^ source.mind
+#                                ^^^ source.mind storage.type.primitive.mind
+#                                   ^ source.mind
+#                                    ^ source.mind punctuation.brackets.curly.mind
+>    net_handle_fd(s)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^ source.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// udp_bind — create a UDP socket bound to host:port.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns a UdpSocket handle or 0 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn udp_bind(host_addr: i64, port: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^ source.mind entity.name.function.mind
+#               ^ source.mind punctuation.brackets.round.mind
+#                ^^^^^^^^^ source.mind
+#                         ^ source.mind punctuation.separator.colon.mind
+#                          ^ source.mind
+#                           ^^^ source.mind storage.type.primitive.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+#                                          ^ source.mind
+#                                           ^^ source.mind keyword.operator.arrow.mind
+#                                             ^ source.mind
+#                                              ^^^ source.mind storage.type.primitive.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = socket(af_inet() as i32, sock_dgram() as i32, 0) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^ source.mind entity.name.function.call.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind
+#                                   ^^ source.mind keyword.other.as.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^ source.mind
+#                                           ^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                                     ^ source.mind punctuation.brackets.round.mind
+#                                                      ^ source.mind punctuation.brackets.round.mind
+#                                                       ^ source.mind
+#                                                        ^^ source.mind keyword.other.as.mind
+#                                                          ^ source.mind
+#                                                           ^^^ source.mind storage.type.primitive.mind
+#                                                              ^ source.mind punctuation.separator.comma.mind
+#                                                               ^ source.mind
+#                                                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                                                 ^ source.mind punctuation.brackets.round.mind
+#                                                                  ^ source.mind
+#                                                                   ^^ source.mind keyword.other.as.mind
+#                                                                     ^ source.mind
+#                                                                      ^^^ source.mind storage.type.primitive.mind
+#                                                                         ^ source.mind punctuation.terminator.statement.mind
+>    if fd < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^^ source.mind
+#          ^ source.mind keyword.operator.comparison.mind
+#           ^ source.mind
+#            ^ source.mind constant.numeric.integer.decimal.mind
+#             ^ source.mind
+#              ^ source.mind punctuation.brackets.curly.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    let _ = net_set_reuseaddr(fd);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^^ source.mind
+#                                ^ source.mind punctuation.brackets.round.mind
+#                                 ^ source.mind punctuation.terminator.statement.mind
+>    let sa: i64 = net_build_sockaddr_in(host_addr, port);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^^^^^^^^ source.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^ source.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    let r: i64 = bind(fd as i32, sa as *const u8, 16) as i64;
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind punctuation.separator.colon.mind
+#          ^ source.mind
+#           ^^^ source.mind storage.type.primitive.mind
+#              ^ source.mind
+#               ^ source.mind keyword.operator.assignment.mind
+#                ^ source.mind
+#                 ^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.separator.comma.mind
+#                                ^^^^ source.mind
+#                                    ^^ source.mind keyword.other.as.mind
+#                                      ^ source.mind
+#                                       ^ source.mind keyword.operator.arithmetic.mind
+#                                        ^^^^^ source.mind storage.type.mind
+#                                             ^ source.mind
+#                                              ^^ source.mind storage.type.primitive.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind
+#                                                      ^^ source.mind keyword.other.as.mind
+#                                                        ^ source.mind
+#                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                            ^ source.mind punctuation.terminator.statement.mind
+>    if r < 0 {
+#^^^^ source.mind
+#    ^^ source.mind keyword.control.mind
+#      ^^^ source.mind
+#         ^ source.mind keyword.operator.comparison.mind
+#          ^ source.mind
+#           ^ source.mind constant.numeric.integer.decimal.mind
+#            ^ source.mind
+#             ^ source.mind punctuation.brackets.curly.mind
+>        let _ = close(fd as i32);
+#^^^^^^^^ source.mind
+#        ^^^ source.mind storage.type.let.mind
+#           ^ source.mind
+#            ^ source.mind variable.other.mind
+#             ^ source.mind
+#              ^ source.mind keyword.operator.assignment.mind
+#               ^ source.mind
+#                ^^^^^ source.mind entity.name.function.call.mind
+#                     ^ source.mind punctuation.brackets.round.mind
+#                      ^^^ source.mind
+#                         ^^ source.mind keyword.other.as.mind
+#                           ^ source.mind
+#                            ^^^ source.mind storage.type.primitive.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind punctuation.terminator.statement.mind
+>        return 0;
+#^^^^^^^^ source.mind
+#        ^^^^^^ source.mind keyword.control.mind
+#              ^ source.mind
+#               ^ source.mind constant.numeric.integer.decimal.mind
+#                ^ source.mind punctuation.terminator.statement.mind
+>    }
+#^^^^ source.mind
+#    ^ source.mind punctuation.brackets.curly.mind
+>    net_alloc_handle(fd)
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^^ source.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// udp_socket_port — returns the actual bound port.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn udp_socket_port(s: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                      ^ source.mind punctuation.brackets.round.mind
+#                       ^ source.mind
+#                        ^ source.mind punctuation.separator.colon.mind
+#                         ^ source.mind
+#                          ^^^ source.mind storage.type.primitive.mind
+#                             ^ source.mind punctuation.brackets.round.mind
+#                              ^ source.mind
+#                               ^^ source.mind keyword.operator.arrow.mind
+#                                 ^ source.mind
+#                                  ^^^ source.mind storage.type.primitive.mind
+#                                     ^ source.mind
+#                                      ^ source.mind punctuation.brackets.curly.mind
+>    net_getsockname_port(net_handle_fd(s))
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                        ^ source.mind punctuation.brackets.round.mind
+#                         ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                      ^ source.mind punctuation.brackets.round.mind
+#                                       ^ source.mind
+#                                        ^ source.mind punctuation.brackets.round.mind
+#                                         ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// udp_send_to — send `len` bytes from buf_addr to dest host:port.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns bytes sent or -1 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn udp_send_to(s: i64, dest_addr: i64, port: i64, buf_addr: i64, len: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^ source.mind entity.name.function.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^ source.mind
+#                    ^ source.mind punctuation.separator.colon.mind
+#                     ^ source.mind
+#                      ^^^ source.mind storage.type.primitive.mind
+#                         ^ source.mind punctuation.separator.comma.mind
+#                          ^^^^^^^^^^ source.mind
+#                                    ^ source.mind punctuation.separator.colon.mind
+#                                     ^ source.mind
+#                                      ^^^ source.mind storage.type.primitive.mind
+#                                         ^ source.mind punctuation.separator.comma.mind
+#                                          ^^^^^ source.mind
+#                                               ^ source.mind punctuation.separator.colon.mind
+#                                                ^ source.mind
+#                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                     ^^^^^^^^^ source.mind
+#                                                              ^ source.mind punctuation.separator.colon.mind
+#                                                               ^ source.mind
+#                                                                ^^^ source.mind storage.type.primitive.mind
+#                                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                                    ^^^^ source.mind
+#                                                                        ^ source.mind punctuation.separator.colon.mind
+#                                                                         ^ source.mind
+#                                                                          ^^^ source.mind storage.type.primitive.mind
+#                                                                             ^ source.mind punctuation.brackets.round.mind
+#                                                                              ^ source.mind
+#                                                                               ^^ source.mind keyword.operator.arrow.mind
+#                                                                                 ^ source.mind
+#                                                                                  ^^^ source.mind storage.type.primitive.mind
+#                                                                                     ^ source.mind
+#                                                                                      ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let sa: i64 = net_build_sockaddr_in(dest_addr, port);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^^^^^^^^^ source.mind
+#                                                 ^ source.mind punctuation.separator.comma.mind
+#                                                  ^^^^^ source.mind
+#                                                       ^ source.mind punctuation.brackets.round.mind
+#                                                        ^ source.mind punctuation.terminator.statement.mind
+>    sendto(fd as i32, buf_addr as *const u8, len, 0, sa as *const u8, 16)
+#^^^^ source.mind
+#    ^^^^^^ source.mind entity.name.function.call.mind
+#          ^ source.mind punctuation.brackets.round.mind
+#           ^^^ source.mind
+#              ^^ source.mind keyword.other.as.mind
+#                ^ source.mind
+#                 ^^^ source.mind storage.type.primitive.mind
+#                    ^ source.mind punctuation.separator.comma.mind
+#                     ^^^^^^^^^^ source.mind
+#                               ^^ source.mind keyword.other.as.mind
+#                                 ^ source.mind
+#                                  ^ source.mind keyword.operator.arithmetic.mind
+#                                   ^^^^^ source.mind storage.type.mind
+#                                        ^ source.mind
+#                                         ^^ source.mind storage.type.primitive.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^^^^ source.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                    ^^^^ source.mind
+#                                                        ^^ source.mind keyword.other.as.mind
+#                                                          ^ source.mind
+#                                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                                            ^^^^^ source.mind storage.type.mind
+#                                                                 ^ source.mind
+#                                                                  ^^ source.mind storage.type.primitive.mind
+#                                                                    ^ source.mind punctuation.separator.comma.mind
+#                                                                     ^ source.mind
+#                                                                      ^^ source.mind constant.numeric.integer.decimal.mind
+#                                                                        ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// udp_recv_from — receive up to `max` bytes into buf_addr.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>// Returns bytes_read on success, or -1 on error.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn udp_recv_from(s: i64, buf_addr: i64, max: i64) -> i64 {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^^^^^ source.mind entity.name.function.mind
+#                    ^ source.mind punctuation.brackets.round.mind
+#                     ^ source.mind
+#                      ^ source.mind punctuation.separator.colon.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.separator.comma.mind
+#                            ^^^^^^^^^ source.mind
+#                                     ^ source.mind punctuation.separator.colon.mind
+#                                      ^ source.mind
+#                                       ^^^ source.mind storage.type.primitive.mind
+#                                          ^ source.mind punctuation.separator.comma.mind
+#                                           ^^^^ source.mind
+#                                               ^ source.mind punctuation.separator.colon.mind
+#                                                ^ source.mind
+#                                                 ^^^ source.mind storage.type.primitive.mind
+#                                                    ^ source.mind punctuation.brackets.round.mind
+#                                                     ^ source.mind
+#                                                      ^^ source.mind keyword.operator.arrow.mind
+#                                                        ^ source.mind
+#                                                         ^^^ source.mind storage.type.primitive.mind
+#                                                            ^ source.mind
+#                                                             ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let sa: i64 = __mind_alloc(16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                              ^ source.mind punctuation.brackets.round.mind
+#                               ^^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = memset(sa as *mut u8, 0, 16);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^^ source.mind entity.name.function.call.mind
+#                  ^ source.mind punctuation.brackets.round.mind
+#                   ^^^ source.mind
+#                      ^^ source.mind keyword.other.as.mind
+#                        ^ source.mind
+#                         ^ source.mind keyword.operator.arithmetic.mind
+#                          ^^^ source.mind storage.modifier.mind
+#                             ^ source.mind
+#                              ^^ source.mind storage.type.primitive.mind
+#                                ^ source.mind punctuation.separator.comma.mind
+#                                 ^ source.mind
+#                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                   ^ source.mind punctuation.separator.comma.mind
+#                                    ^ source.mind
+#                                     ^^ source.mind constant.numeric.integer.decimal.mind
+#                                       ^ source.mind punctuation.brackets.round.mind
+#                                        ^ source.mind punctuation.terminator.statement.mind
+>    let lenptr: i64 = __mind_alloc(4);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^^^^^ source.mind variable.other.mind
+#              ^ source.mind punctuation.separator.colon.mind
+#               ^ source.mind
+#                ^^^ source.mind storage.type.primitive.mind
+#                   ^ source.mind
+#                    ^ source.mind keyword.operator.assignment.mind
+#                     ^ source.mind
+#                      ^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind constant.numeric.integer.decimal.mind
+#                                    ^ source.mind punctuation.brackets.round.mind
+#                                     ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 0, 16);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^^ source.mind constant.numeric.integer.decimal.mind
+#                                  ^ source.mind punctuation.brackets.round.mind
+#                                   ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 1, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 2, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    __mind_store_i8(lenptr + 3, 0);
+#^^^^ source.mind
+#    ^^^^^^^^^^^^^^^ source.mind support.function.intrinsic.mind
+#                   ^ source.mind punctuation.brackets.round.mind
+#                    ^^^^^^^ source.mind
+#                           ^ source.mind keyword.operator.arithmetic.mind
+#                            ^ source.mind
+#                             ^ source.mind constant.numeric.integer.decimal.mind
+#                              ^ source.mind punctuation.separator.comma.mind
+#                               ^ source.mind
+#                                ^ source.mind constant.numeric.integer.decimal.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    recvfrom(fd as i32, buf_addr as *mut u8, max, 0, sa as *mut u8, lenptr as *mut u8)
+#^^^^ source.mind
+#    ^^^^^^^^ source.mind entity.name.function.call.mind
+#            ^ source.mind punctuation.brackets.round.mind
+#             ^^^ source.mind
+#                ^^ source.mind keyword.other.as.mind
+#                  ^ source.mind
+#                   ^^^ source.mind storage.type.primitive.mind
+#                      ^ source.mind punctuation.separator.comma.mind
+#                       ^^^^^^^^^^ source.mind
+#                                 ^^ source.mind keyword.other.as.mind
+#                                   ^ source.mind
+#                                    ^ source.mind keyword.operator.arithmetic.mind
+#                                     ^^^ source.mind storage.modifier.mind
+#                                        ^ source.mind
+#                                         ^^ source.mind storage.type.primitive.mind
+#                                           ^ source.mind punctuation.separator.comma.mind
+#                                            ^^^^ source.mind
+#                                                ^ source.mind punctuation.separator.comma.mind
+#                                                 ^ source.mind
+#                                                  ^ source.mind constant.numeric.integer.decimal.mind
+#                                                   ^ source.mind punctuation.separator.comma.mind
+#                                                    ^^^^ source.mind
+#                                                        ^^ source.mind keyword.other.as.mind
+#                                                          ^ source.mind
+#                                                           ^ source.mind keyword.operator.arithmetic.mind
+#                                                            ^^^ source.mind storage.modifier.mind
+#                                                               ^ source.mind
+#                                                                ^^ source.mind storage.type.primitive.mind
+#                                                                  ^ source.mind punctuation.separator.comma.mind
+#                                                                   ^^^^^^^^ source.mind
+#                                                                           ^^ source.mind keyword.other.as.mind
+#                                                                             ^ source.mind
+#                                                                              ^ source.mind keyword.operator.arithmetic.mind
+#                                                                               ^^^ source.mind storage.modifier.mind
+#                                                                                  ^ source.mind
+#                                                                                   ^^ source.mind storage.type.primitive.mind
+#                                                                                     ^ source.mind punctuation.brackets.round.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
+>// udp_close — close a UdpSocket fd.
+#^^ source.mind comment.line.double-slash.mind punctuation.definition.comment.mind
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.mind comment.line.double-slash.mind
+>pub fn udp_close(s: i64) {
+#^^^ source.mind storage.modifier.mind
+#   ^ source.mind
+#    ^^ source.mind storage.type.function.mind
+#      ^ source.mind
+#       ^^^^^^^^^ source.mind entity.name.function.mind
+#                ^ source.mind punctuation.brackets.round.mind
+#                 ^ source.mind
+#                  ^ source.mind punctuation.separator.colon.mind
+#                   ^ source.mind
+#                    ^^^ source.mind storage.type.primitive.mind
+#                       ^ source.mind punctuation.brackets.round.mind
+#                        ^ source.mind
+#                         ^ source.mind punctuation.brackets.curly.mind
+>    let fd: i64 = net_handle_fd(s);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^^ source.mind variable.other.mind
+#          ^ source.mind punctuation.separator.colon.mind
+#           ^ source.mind
+#            ^^^ source.mind storage.type.primitive.mind
+#               ^ source.mind
+#                ^ source.mind keyword.operator.assignment.mind
+#                 ^ source.mind
+#                  ^^^^^^^^^^^^^ source.mind entity.name.function.call.mind
+#                               ^ source.mind punctuation.brackets.round.mind
+#                                ^ source.mind
+#                                 ^ source.mind punctuation.brackets.round.mind
+#                                  ^ source.mind punctuation.terminator.statement.mind
+>    let _ = close(fd as i32);
+#^^^^ source.mind
+#    ^^^ source.mind storage.type.let.mind
+#       ^ source.mind
+#        ^ source.mind variable.other.mind
+#         ^ source.mind
+#          ^ source.mind keyword.operator.assignment.mind
+#           ^ source.mind
+#            ^^^^^ source.mind entity.name.function.call.mind
+#                 ^ source.mind punctuation.brackets.round.mind
+#                  ^^^ source.mind
+#                     ^^ source.mind keyword.other.as.mind
+#                       ^ source.mind
+#                        ^^^ source.mind storage.type.primitive.mind
+#                           ^ source.mind punctuation.brackets.round.mind
+#                            ^ source.mind punctuation.terminator.statement.mind
+>}
+#^ source.mind punctuation.brackets.curly.mind
+>
