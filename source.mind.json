@@ -1,12 +1,16 @@
 {
-  "name": "Mind",
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "MIND",
   "scopeName": "source.mind",
   "fileTypes": ["mind"],
   "patterns": [
     { "include": "#comments" },
     { "include": "#attributes" },
     { "include": "#strings" },
+    { "include": "#chars" },
     { "include": "#numbers" },
+    { "include": "#imports" },
+    { "include": "#declarations" },
     { "include": "#keywords" },
     { "include": "#types" },
     { "include": "#functions" },
@@ -17,51 +21,166 @@
     "comments": {
       "patterns": [
         {
-          "name": "comment.line.double-slash.mind",
-          "match": "//.*$"
+          "name": "comment.line.documentation.mind",
+          "match": "(///)(?!/).*$",
+          "captures": {
+            "1": { "name": "punctuation.definition.comment.mind" }
+          }
         },
         {
-          "name": "comment.block.mind",
-          "begin": "/\\*",
-          "end": "\\*/"
-        }
+          "name": "comment.line.double-slash.mind",
+          "match": "(//).*$",
+          "captures": {
+            "1": { "name": "punctuation.definition.comment.mind" }
+          }
+        },
+        { "include": "#block-comment" }
       ]
     },
+    "block-comment": {
+      "name": "comment.block.mind",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.comment.begin.mind" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.comment.end.mind" }
+      },
+      "patterns": [{ "include": "#block-comment" }]
+    },
     "attributes": {
+      "name": "meta.attribute.mind",
+      "begin": "(#)(\\[)\\s*([A-Za-z_][A-Za-z0-9_]*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.attribute.mind" },
+        "2": { "name": "punctuation.brackets.attribute.begin.mind" },
+        "3": { "name": "entity.other.attribute-name.mind" }
+      },
+      "end": "\\]",
+      "endCaptures": {
+        "0": { "name": "punctuation.brackets.attribute.end.mind" }
+      },
       "patterns": [
-        {
-          "name": "meta.attribute.mind",
-          "match": "#\\[([a-zA-Z_][a-zA-Z0-9_]*)(\\([^)]*\\))?\\]",
-          "captures": {
-            "1": { "name": "entity.name.function.attribute.mind" }
-          }
-        }
+        { "include": "#strings" },
+        { "include": "#numbers" },
+        { "include": "#punctuation" }
       ]
     },
     "strings": {
+      "name": "string.quoted.double.mind",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": {
+        "0": { "name": "punctuation.definition.string.begin.mind" }
+      },
+      "endCaptures": {
+        "0": { "name": "punctuation.definition.string.end.mind" }
+      },
       "patterns": [
         {
-          "name": "string.quoted.double.mind",
-          "begin": "\"",
-          "end": "\"",
-          "patterns": [
-            {
-              "name": "constant.character.escape.mind",
-              "match": "\\\\."
-            }
-          ]
+          "name": "constant.character.escape.mind",
+          "match": "\\\\[ntr0\\\\'\"]"
+        },
+        {
+          "name": "invalid.illegal.unknown-escape.mind",
+          "match": "\\\\."
         }
       ]
+    },
+    "chars": {
+      "name": "string.quoted.single.mind",
+      "match": "(')(?:(\\\\[ntr0\\\\'\"])|[^'\\\\])(')",
+      "captures": {
+        "1": { "name": "punctuation.definition.string.begin.mind" },
+        "2": { "name": "constant.character.escape.mind" },
+        "3": { "name": "punctuation.definition.string.end.mind" }
+      }
     },
     "numbers": {
       "patterns": [
         {
-          "name": "constant.numeric.float.mind",
-          "match": "\\b[0-9]+\\.[0-9]+([eE][+-]?[0-9]+)?\\b"
+          "name": "constant.numeric.integer.hexadecimal.mind",
+          "match": "\\b0[xX][0-9a-fA-F_]+(usize|isize|u8|u16|u32|u64|i8|i16|i32|i64)?\\b",
+          "captures": {
+            "1": { "name": "storage.type.numeric.mind" }
+          }
         },
         {
-          "name": "constant.numeric.integer.mind",
-          "match": "\\b[0-9]+\\b"
+          "name": "constant.numeric.integer.octal.mind",
+          "match": "\\b0[oO][0-7_]+(usize|isize|u8|u16|u32|u64|i8|i16|i32|i64)?\\b",
+          "captures": {
+            "1": { "name": "storage.type.numeric.mind" }
+          }
+        },
+        {
+          "name": "constant.numeric.integer.binary.mind",
+          "match": "\\b0[bB][01_]+(usize|isize|u8|u16|u32|u64|i8|i16|i32|i64)?\\b",
+          "captures": {
+            "1": { "name": "storage.type.numeric.mind" }
+          }
+        },
+        {
+          "name": "constant.numeric.float.mind",
+          "match": "\\b[0-9]+(?:_[0-9]+)*\\.[0-9]+(?:[eE][+-]?[0-9]+)?\\b"
+        },
+        {
+          "name": "constant.numeric.float.mind",
+          "match": "\\b[0-9]+(?:_[0-9]+)*[eE][+-]?[0-9]+\\b"
+        },
+        {
+          "name": "constant.numeric.integer.decimal.mind",
+          "match": "\\b[0-9]+(?:_[0-9]+)*(usize|isize|u8|u16|u32|u64|i8|i16|i32|i64)?\\b",
+          "captures": {
+            "1": { "name": "storage.type.numeric.mind" }
+          }
+        }
+      ]
+    },
+    "imports": {
+      "match": "\\b(import|use)\\s+([A-Za-z_][A-Za-z0-9_]*(?:(?:\\.|::)[A-Za-z_][A-Za-z0-9_]*)*)",
+      "captures": {
+        "1": { "name": "keyword.control.import.mind" },
+        "2": { "name": "entity.name.namespace.mind" }
+      }
+    },
+    "declarations": {
+      "patterns": [
+        {
+          "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.function.mind" },
+            "2": { "name": "entity.name.function.mind" }
+          }
+        },
+        {
+          "match": "\\b(struct|enum|trait|type|impl)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.$1.mind" },
+            "2": { "name": "entity.name.type.mind" }
+          }
+        },
+        {
+          "match": "\\b(module|invariant)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.$1.mind" },
+            "2": { "name": "entity.name.namespace.mind" }
+          }
+        },
+        {
+          "match": "(?<!\\*)\\b(const)\\s+([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.const.mind" },
+            "2": { "name": "variable.other.constant.mind" }
+          }
+        },
+        {
+          "match": "\\b(let)\\s+(?:(mut)\\s+)?([A-Za-z_][A-Za-z0-9_]*)",
+          "captures": {
+            "1": { "name": "storage.type.let.mind" },
+            "2": { "name": "storage.modifier.mut.mind" },
+            "3": { "name": "variable.other.mind" }
+          }
         }
       ]
     },
@@ -69,19 +188,55 @@
       "patterns": [
         {
           "name": "keyword.control.mind",
-          "match": "\\b(if|else|for|while|loop|match|return|break|continue)\\b"
+          "match": "\\b(if|else|match|for|in|while|loop|return|break|continue)\\b"
         },
         {
-          "name": "keyword.declaration.mind",
-          "match": "\\b(fn|let|const|struct|enum|type|impl|trait|module|import|use|pub|mut)\\b"
+          "name": "keyword.control.import.mind",
+          "match": "\\b(import|use|export)\\b"
+        },
+        {
+          "name": "keyword.other.as.mind",
+          "match": "\\bas\\b"
+        },
+        {
+          "name": "storage.type.function.mind",
+          "match": "\\bfn\\b"
+        },
+        {
+          "name": "storage.type.mind",
+          "match": "\\b(let|const|struct|enum|type|trait|impl|module|extern|invariant)\\b"
+        },
+        {
+          "name": "storage.modifier.mind",
+          "match": "\\b(pub|mut|unsafe)\\b"
+        },
+        {
+          "name": "storage.modifier.mind",
+          "match": "\\bsafe(?=\\s+fn\\b)|\\bdiff(?=\\s+tensor\\b)"
         },
         {
           "name": "keyword.other.mind",
-          "match": "\\b(on|diff|async|await|where)\\b"
+          "match": "\\b(assert|where|defer)\\b"
         },
         {
-          "name": "constant.language.mind",
-          "match": "\\b(true|false|null|self|Self)\\b"
+          "name": "keyword.other.mind",
+          "match": "\\bregion(?=\\s*\\{)|\\bcallconv(?=\\s*\\()|\\bsparse(?=\\s*\\[)"
+        },
+        {
+          "name": "constant.language.boolean.mind",
+          "match": "\\b(true|false)\\b"
+        },
+        {
+          "name": "variable.language.self.mind",
+          "match": "\\bself\\b"
+        },
+        {
+          "name": "entity.name.type.self.mind",
+          "match": "\\bSelf\\b"
+        },
+        {
+          "name": "support.constant.prelude.mind",
+          "match": "\\b(Some|None|Ok|Err)\\b"
         }
       ]
     },
@@ -89,67 +244,139 @@
       "patterns": [
         {
           "name": "storage.type.primitive.mind",
-          "match": "\\b(f16|f32|f64|i8|i16|i32|i64|u8|u16|u32|u64|bool|str|void)\\b"
+          "match": "\\b(i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|f16|bf16|f32|f64|q16|bool)\\b"
         },
         {
           "name": "storage.type.tensor.mind",
-          "match": "\\b(Tensor|tensor|Array|Vec|Map|Set|Option|Result)\\b"
+          "match": "\\b(tensor|Tensor)\\b"
+        },
+        {
+          "name": "support.type.prelude.mind",
+          "match": "\\b(Option|Result|String)\\b"
+        },
+        {
+          "name": "support.type.collection.mind",
+          "match": "\\b(map|set|array)(?=\\s*<)"
+        },
+        {
+          "name": "variable.other.constant.mind",
+          "match": "\\b[A-Z]{2,}(?:[0-9]+)?(?:_[A-Z0-9]+)*\\b"
         },
         {
           "name": "entity.name.type.mind",
-          "match": "\\b[A-Z][a-zA-Z0-9_]*\\b"
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b"
         }
       ]
     },
     "functions": {
       "patterns": [
         {
-          "name": "entity.name.function.mind",
-          "match": "\\b([a-z_][a-zA-Z0-9_]*)\\s*(?=\\()"
+          "name": "support.function.builtin.mind",
+          "match": "\\b(print|grad)(?=\\s*\\()"
         },
         {
-          "name": "support.function.builtin.mind",
-          "match": "\\b(print|println|zeros|ones|reshape|matmul|conv2d|relu|sigmoid|tanh|softmax|log_softmax|maxpool2d|sum|mean|abs|sqrt|log|exp|sin|cos|stack|gather|argmax|backward)\\b"
+          "name": "support.function.intrinsic.mind",
+          "match": "\\b__mind_[A-Za-z0-9_]+\\b"
+        },
+        {
+          "name": "entity.name.function.call.mind",
+          "match": "\\b[a-z_][A-Za-z0-9_]*(?=\\s*\\()"
         }
       ]
     },
     "operators": {
       "patterns": [
         {
+          "name": "punctuation.separator.namespace.mind",
+          "match": "::"
+        },
+        {
           "name": "keyword.operator.arrow.mind",
-          "match": "->"
+          "match": "->|=>"
         },
         {
-          "name": "keyword.operator.comparison.mind",
-          "match": "(==|!=|<=|>=|<|>)"
-        },
-        {
-          "name": "keyword.operator.assignment.mind",
-          "match": "(=|\\+=|-=|\\*=|/=)"
-        },
-        {
-          "name": "keyword.operator.arithmetic.mind",
-          "match": "(\\+|-|\\*|/|%|@)"
-        },
-        {
-          "name": "keyword.operator.logical.mind",
-          "match": "(&&|\\|\\||!)"
+          "name": "keyword.operator.variadic.mind",
+          "match": "\\.\\.\\."
         },
         {
           "name": "keyword.operator.range.mind",
           "match": "\\.\\."
+        },
+        {
+          "name": "keyword.operator.elementwise.mind",
+          "match": "\\.[-+*/]"
+        },
+        {
+          "name": "keyword.operator.assignment.compound.mind",
+          "match": "<<=|>>=|\\+=|-=|\\*=|/=|%=|&=|\\|=|\\^="
+        },
+        {
+          "name": "keyword.operator.comparison.mind",
+          "match": "==|!=|<=|>="
+        },
+        {
+          "name": "keyword.operator.logical.mind",
+          "match": "&&|\\|\\||!"
+        },
+        {
+          "name": "keyword.operator.bitwise.shift.mind",
+          "match": "<<|>>"
+        },
+        {
+          "name": "keyword.operator.assignment.mind",
+          "match": "="
+        },
+        {
+          "name": "keyword.operator.comparison.mind",
+          "match": "<|>"
+        },
+        {
+          "name": "keyword.operator.matmul.mind",
+          "match": "@"
+        },
+        {
+          "name": "keyword.operator.arithmetic.mind",
+          "match": "[-+*/%]"
+        },
+        {
+          "name": "keyword.operator.bitwise.mind",
+          "match": "[&|^]"
+        },
+        {
+          "name": "keyword.operator.try.mind",
+          "match": "\\?"
+        },
+        {
+          "name": "punctuation.accessor.mind",
+          "match": "\\."
         }
       ]
     },
     "punctuation": {
       "patterns": [
         {
-          "name": "punctuation.separator.mind",
-          "match": "(,|;|:)"
+          "name": "punctuation.separator.comma.mind",
+          "match": ","
         },
         {
-          "name": "punctuation.bracket.mind",
-          "match": "(\\[|\\]|\\{|\\}|\\(|\\))"
+          "name": "punctuation.terminator.statement.mind",
+          "match": ";"
+        },
+        {
+          "name": "punctuation.separator.colon.mind",
+          "match": ":"
+        },
+        {
+          "name": "punctuation.brackets.round.mind",
+          "match": "[()]"
+        },
+        {
+          "name": "punctuation.brackets.square.mind",
+          "match": "[\\[\\]]"
+        },
+        {
+          "name": "punctuation.brackets.curly.mind",
+          "match": "[{}]"
         }
       ]
     }
