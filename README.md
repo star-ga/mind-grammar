@@ -120,6 +120,12 @@ The grammar follows the MIND reference compiler, not a generic C-like template:
 - Attribute syntax is `#[name(args)]`, as in RFC 0012.
 - The tests run on real MIND sources from the standard library and the examples.
 
+## Community
+
+- **Discussions:** <https://github.com/star-ga/mind/discussions> — questions,
+  ideas and help for mind-grammar and the wider MIND ecosystem.
+- **Discord:** <https://mindlang.dev/discord> — the MindLang community server.
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
