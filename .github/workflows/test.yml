@@ -21,6 +21,6 @@ jobs:
       - run: npm test
       - name: Corpus check against the MIND repository
         run: |
-          git clone --depth 1 https://github.com/star-ga/mind.git "$RUNNER_TEMP/mind"
+          git clone --depth 1 --branch v0.10.4 https://github.com/star-ga/mind.git "$RUNNER_TEMP/mind"
           npm run test:corpus -- "$RUNNER_TEMP/mind/std" "$RUNNER_TEMP/mind/examples" "$RUNNER_TEMP/mind/tests"
       - run: npm run package
