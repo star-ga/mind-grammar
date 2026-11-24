@@ -28,7 +28,7 @@ Any editor or tool that reads TextMate grammars can use `source.mind.json` direc
 
 ## Status
 
-- Tracks the MIND 0.10.x surface language. Checked against the parser of the reference compiler `mindc` 0.10.2 and the lexical chapter of [mind-spec](https://github.com/star-ga/mind-spec).
+- Tracks the MIND 0.10.x surface language. Checked against the parser of the reference compiler `mindc` 0.10.4 and the lexical chapter of [mind-spec](https://github.com/star-ga/mind-spec).
 - Tested with assertion tests, snapshot tests and a corpus check (see [Testing](#testing)).
 - Not published to the VS Code Marketplace or Open VSX. Install it from a locally built `.vsix` (below).
 - Planned: a CI check that fails when the spec's lexical grammar (`mind-spec/spec/v1.0/grammar-lexical.ebnf`) gains a token class or keyword with no scope here. Done when the check exists and a deliberately removed keyword scope turns it red.
